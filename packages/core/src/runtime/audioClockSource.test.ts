@@ -261,6 +261,30 @@ describe("the audio the playhead follows", () => {
     expect(window.__player!.getTime()).toBeGreaterThan((nowMs - playedAt) / 1000 + 0.1);
   });
 
+  it("follows a looping bed with no length over a longer clip that starts late", async () => {
+    mount(
+      `<audio id="shot" data-start="0" data-duration="3" src="/assets/shot.mp4"></audio>` +
+        `<audio id="bed" data-start="0" loop src="/assets/bed.wav"></audio>`,
+    );
+    const shot = document.getElementById("shot") as HTMLAudioElement;
+    const bed = document.getElementById("bed") as HTMLAudioElement;
+    Object.defineProperty(bed, "duration", { value: 2, configurable: true });
+    initSandboxRuntimeModular();
+    await flush();
+    window.__player?.play();
+    await flush();
+    const playedAt = nowMs;
+    Object.assign(shot, { paused: false });
+    Object.assign(bed, { paused: false });
+    for (let frame = 1; frame <= 100; frame++) {
+      const t = (nowMs + 1000 / 60 - playedAt) / 1000;
+      bed.currentTime = t;
+      shot.currentTime = Math.max(0, t - 0.25);
+      stepFrames(1);
+      expect(window.__player!.getTime()).toBeCloseTo(t, 3);
+    }
+  });
+
   it("follows the next clip when one earlier in the page failed to load", async () => {
     mount(
       `<audio id="broken" data-start="0" data-duration="10" src="/assets/missing.mp3"></audio>` +

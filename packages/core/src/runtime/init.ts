@@ -4548,7 +4548,9 @@ export function initSandboxRuntimeModular(): void {
       const end = durAttr != null && durAttr > 0 ? start + durAttr : Infinity;
       if (!Number.isFinite(start) || !isInClipWindow(state.currentTime, start, end)) continue;
       if (el === followed) return { el, start };
-      const runsUntil = start + (resolveMediaElementDurationSeconds(el) ?? Infinity);
+      const runsUntil = el.loop
+        ? end
+        : start + (resolveMediaElementDurationSeconds(el) ?? Infinity);
       if (!longest || runsUntil > longest.runsUntil) longest = { el, start, runsUntil };
     }
     return longest;
