@@ -82,6 +82,8 @@ examples/*
 !examples/gcp-cloud-run/**
 !examples/talking-head-30s
 !examples/talking-head-30s/**
+!examples/ysk-avatar-30s
+!examples/ysk-avatar-30s/**
 # …but never the local smoke run's build/render artifacts.
 examples/gcp-cloud-run/scripts/gcp-smoke-artifacts/
 packages/studio/data/

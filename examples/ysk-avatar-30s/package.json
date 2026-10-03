@@ -1,0 +1,10 @@
+{
+  "name": "ysk-avatar-30s",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npx --yes hyperframes@0.6.82 preview",
+    "check": "npx --yes hyperframes@0.6.82 lint && npx --yes hyperframes@0.6.82 validate && npx --yes hyperframes@0.6.82 inspect",
+    "render": "npx --yes hyperframes@0.6.82 render"
+  }
+}

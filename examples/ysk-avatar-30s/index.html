@@ -1,0 +1,1403 @@
+<!doctype html>
+<html lang="ru" data-resolution="portrait">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      /*
+       * @ysk_ai1 · говорящий аватар · 30s · 1080x1920
+       * Brand (video-cover-generator/references/brand-style-guide.md):
+       *   bg #0A0A0A → #171310 · accent #FF8A00 → #FFC24B · secondary #8B5CF6
+       *   bold condensed grotesk, ALL CAPS, tight tracking
+       * Type: Oswald (statements + captions), JetBrains Mono (metadata, code)
+       */
+      @font-face {
+        font-family: "Oswald";
+        font-weight: 200 700;
+        src: url("fonts/Oswald-cyrillic.woff2") format("woff2");
+        unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+      }
+      @font-face {
+        font-family: "Oswald";
+        font-weight: 200 700;
+        src: url("fonts/Oswald-latin.woff2") format("woff2");
+        unicode-range:
+          U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308,
+          U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+      }
+      @font-face {
+        font-family: "JetBrains Mono";
+        font-weight: 500;
+        src: url("fonts/JetBrainsMono-cyrillic.woff2") format("woff2");
+        unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+      }
+      @font-face {
+        font-family: "JetBrains Mono";
+        font-weight: 500;
+        src: url("fonts/JetBrainsMono-latin.woff2") format("woff2");
+        unicode-range:
+          U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308,
+          U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+      }
+      :root {
+        --bg0: #0a0a0a;
+        --bg1: #171310;
+        --or: #ff8a00;
+        --or2: #ffc24b;
+        --vi: #8b5cf6;
+        --fg: #fff6ec;
+        --muted: #d9c7b4;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: var(--bg0);
+      }
+      body {
+        font-family: "Oswald", sans-serif;
+        color: var(--fg);
+      }
+      #root {
+        position: relative;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: radial-gradient(ellipse 120% 80% at 50% 45%, var(--bg1), var(--bg0) 70%);
+      }
+
+      /* ── Background layer ── */
+      #glow-main {
+        position: absolute;
+        left: 50%;
+        top: 820px;
+        width: 1300px;
+        height: 1300px;
+        margin: -650px 0 0 -650px;
+        border-radius: 50%;
+        background: radial-gradient(
+          circle,
+          rgba(255, 138, 0, 0.42),
+          rgba(255, 138, 0, 0.12) 38%,
+          rgba(255, 138, 0, 0) 64%
+        );
+      }
+      #glow-violet {
+        position: absolute;
+        left: 760px;
+        top: 1180px;
+        width: 700px;
+        height: 700px;
+        margin: -350px 0 0 -350px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(139, 92, 246, 0.22), rgba(139, 92, 246, 0) 62%);
+      }
+      #ghost {
+        position: absolute;
+        left: -40px;
+        top: 700px;
+        font-weight: 700;
+        font-size: 330px;
+        line-height: 0.82;
+        letter-spacing: -0.02em;
+        color: transparent;
+        -webkit-text-stroke: 3px rgba(255, 138, 0, 0.16);
+        white-space: nowrap;
+      }
+
+      /* ── Avatar: cam (punch-ins) → sway (rotation) → bob (speech) → breathe (scale) ── */
+      #cam {
+        position: absolute;
+        inset: 0;
+        transform-origin: 540px 880px;
+      }
+      #av-sway {
+        position: absolute;
+        left: -63px;
+        top: 480px;
+        width: 1218px;
+        height: 1632px;
+        transform-origin: 603px 1200px;
+      }
+      #av-bob,
+      #av-breathe {
+        position: absolute;
+        inset: 0;
+      }
+      #av-breathe {
+        transform-origin: 603px 1000px;
+      }
+      #av-breathe img,
+      #av-breathe svg {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1218px;
+        height: 1632px;
+      }
+
+      /* ── Top bar ── */
+      #topbar {
+        position: absolute;
+        left: 64px;
+        right: 64px;
+        top: 56px;
+        height: 84px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        z-index: 20;
+      }
+      .handle {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 26px;
+        letter-spacing: 0.04em;
+        color: var(--fg);
+      }
+      .badge {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        border: 3px solid var(--or);
+        box-shadow: 0 0 26px rgba(255, 138, 0, 0.65);
+        background: url("assets/badge.png") center / cover;
+      }
+      .tag {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 22px;
+        letter-spacing: 0.1em;
+        color: var(--muted);
+        padding: 10px 18px;
+        border: 2px solid rgba(255, 246, 236, 0.22);
+        border-radius: 24px;
+      }
+      #progress {
+        position: absolute;
+        left: 64px;
+        right: 64px;
+        top: 26px;
+        height: 6px;
+        border-radius: 3px;
+        background: rgba(255, 246, 236, 0.16);
+        z-index: 20;
+      }
+      #progress-fill {
+        position: absolute;
+        inset: 0;
+        border-radius: 3px;
+        background: linear-gradient(90deg, var(--or), var(--or2));
+        box-shadow: 0 0 16px rgba(255, 138, 0, 0.8);
+        transform-origin: left center;
+      }
+
+      /* ── Headline zone (scenes swap here) ── */
+      #headline {
+        position: absolute;
+        left: 0;
+        top: 170px;
+        width: 1080px;
+        height: 360px;
+        z-index: 15;
+        overflow: hidden;
+      }
+      .hl {
+        position: absolute;
+        inset: 0;
+        padding: 0 64px 58px;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        gap: 10px;
+      }
+      .kicker {
+        font-weight: 500;
+        font-size: 42px;
+        line-height: 1.05;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--or);
+      }
+      .big {
+        font-weight: 700;
+        font-size: 112px;
+        line-height: 0.95;
+        letter-spacing: -0.01em;
+        text-transform: uppercase;
+        color: var(--fg);
+        max-width: 960px;
+      }
+      .big .acc {
+        color: var(--or);
+      }
+      .sub {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 28px;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+      }
+      .stamp {
+        position: absolute;
+        right: 64px;
+        top: 40px;
+        padding: 14px 26px;
+        border-radius: 14px;
+        background: var(--or);
+        color: var(--bg0);
+        font-weight: 700;
+        font-size: 46px;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        transform: rotate(-6deg);
+        box-shadow: 0 0 40px rgba(255, 138, 0, 0.55);
+      }
+      #wipe {
+        position: absolute;
+        inset: 0;
+        z-index: 5;
+        background: linear-gradient(90deg, var(--or), var(--or2));
+        transform: scaleX(0);
+        transform-origin: left center;
+      }
+
+      /* ── Props: float above the avatar's open palm ── */
+      .prop {
+        position: absolute;
+        left: 96px;
+        top: 1110px;
+        width: 560px;
+        height: 330px;
+        z-index: 12;
+      }
+      .glass {
+        position: absolute;
+        inset: 0;
+        border-radius: 28px;
+        background: rgba(14, 11, 9, 0.86);
+        border: 2px solid rgba(255, 138, 0, 0.55);
+        box-shadow:
+          0 0 0 1px rgba(255, 194, 75, 0.15),
+          0 24px 60px rgba(0, 0, 0, 0.55),
+          0 0 50px rgba(255, 138, 0, 0.25);
+      }
+      .code {
+        position: absolute;
+        inset: 0;
+        padding: 30px 34px;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 25px;
+        line-height: 1.5;
+        color: var(--muted);
+        white-space: pre;
+      }
+      .code .k {
+        color: var(--or);
+      }
+      .code .v {
+        color: var(--or2);
+      }
+      .code .a {
+        color: #b9a2fb;
+      }
+      .dots {
+        position: absolute;
+        right: 26px;
+        top: 22px;
+        display: flex;
+        gap: 9px;
+      }
+      .dots i {
+        display: block;
+        width: 13px;
+        height: 13px;
+        border-radius: 50%;
+        background: rgba(255, 246, 236, 0.28);
+      }
+      .player-screen {
+        position: absolute;
+        left: 26px;
+        top: 26px;
+        right: 26px;
+        bottom: 76px;
+        border-radius: 18px;
+        overflow: hidden;
+        background: radial-gradient(
+          circle at 30% 40%,
+          rgba(255, 138, 0, 0.55),
+          rgba(23, 19, 16, 1) 70%
+        );
+      }
+      .play {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 104px;
+        height: 104px;
+        margin: -52px 0 0 -52px;
+        border-radius: 50%;
+        background: var(--fg);
+        box-shadow: 0 0 40px rgba(255, 194, 75, 0.8);
+      }
+      .play::after {
+        content: "";
+        position: absolute;
+        left: 40px;
+        top: 30px;
+        border-style: solid;
+        border-width: 22px 0 22px 34px;
+        border-color: transparent transparent transparent var(--bg0);
+      }
+      .scrub {
+        position: absolute;
+        left: 26px;
+        right: 26px;
+        bottom: 34px;
+        height: 8px;
+        border-radius: 4px;
+        background: rgba(255, 246, 236, 0.2);
+      }
+      .scrub-fill {
+        position: absolute;
+        inset: 0;
+        border-radius: 4px;
+        background: linear-gradient(90deg, var(--or), var(--or2));
+        transform-origin: left center;
+        transform: scaleX(0);
+      }
+      .chip-row {
+        position: absolute;
+        left: 0;
+        top: 0;
+        display: flex;
+        gap: 14px;
+      }
+      .chip {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        height: 76px;
+        padding: 0 22px 0 14px;
+        border-radius: 22px;
+        background: rgba(14, 11, 9, 0.88);
+        border: 2px solid rgba(255, 246, 236, 0.2);
+        font-weight: 500;
+        font-size: 30px;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+      .ico {
+        width: 46px;
+        height: 46px;
+        border-radius: 13px;
+        background: linear-gradient(135deg, var(--or), var(--or2));
+        box-shadow: 0 0 18px rgba(255, 138, 0, 0.6);
+      }
+      .ico.v {
+        background: linear-gradient(135deg, var(--vi), #b9a2fb);
+        box-shadow: 0 0 18px rgba(139, 92, 246, 0.6);
+      }
+      .edit {
+        position: absolute;
+        left: 0;
+        top: 104px;
+        width: 560px;
+        height: 150px;
+      }
+      .edit .code {
+        padding: 26px 30px;
+        font-size: 27px;
+      }
+      .val {
+        position: relative;
+        display: inline-block;
+        width: 3.2ch;
+        height: 1.5em;
+        vertical-align: top;
+        overflow: hidden;
+      }
+      .val span {
+        position: absolute;
+        left: 0;
+        top: 0;
+      }
+      .timer {
+        position: absolute;
+        left: 0;
+        top: 274px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        height: 56px;
+        padding: 0 20px;
+        border-radius: 28px;
+        background: var(--or);
+        color: var(--bg0);
+        font-family: "JetBrains Mono", monospace;
+        font-size: 24px;
+        letter-spacing: 0.06em;
+      }
+      .still {
+        position: absolute;
+        left: 40px;
+        top: -10px;
+        width: 250px;
+        height: 330px;
+        padding: 14px 14px 52px;
+        background: #f7f1ea;
+        border-radius: 10px;
+        box-shadow: 0 24px 50px rgba(0, 0, 0, 0.5);
+        transform: rotate(-5deg);
+      }
+      .still img {
+        display: block;
+        width: 222px;
+        height: 264px;
+        object-fit: cover;
+      }
+      .still b {
+        position: absolute;
+        left: 16px;
+        bottom: 12px;
+        font-family: "JetBrains Mono", monospace;
+        font-weight: 500;
+        font-size: 22px;
+        letter-spacing: 0.08em;
+        color: #3a2a20;
+      }
+      .arrow {
+        position: absolute;
+        left: 310px;
+        top: 120px;
+        width: 140px;
+        height: 6px;
+        border-radius: 3px;
+        background: linear-gradient(90deg, var(--or), var(--or2));
+        transform-origin: left center;
+      }
+      .arrow::after {
+        content: "";
+        position: absolute;
+        right: -6px;
+        top: -11px;
+        border-style: solid;
+        border-width: 14px 0 14px 20px;
+        border-color: transparent transparent transparent var(--or2);
+      }
+      .live {
+        position: absolute;
+        left: 300px;
+        top: 160px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 20px;
+        border-radius: 26px;
+        background: rgba(14, 11, 9, 0.9);
+        border: 2px solid var(--or);
+        font-family: "JetBrains Mono", monospace;
+        font-size: 24px;
+        letter-spacing: 0.1em;
+        color: var(--or);
+      }
+      .live i {
+        display: block;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--or);
+        box-shadow: 0 0 14px var(--or);
+      }
+      .comment {
+        position: absolute;
+        left: 0;
+        top: 60px;
+        width: 560px;
+        height: 150px;
+        display: flex;
+        align-items: center;
+        gap: 22px;
+        padding: 0 30px;
+        border-radius: 30px;
+        background: rgba(14, 11, 9, 0.9);
+        border: 2px solid rgba(255, 246, 236, 0.22);
+        box-shadow: 0 0 50px rgba(255, 138, 0, 0.25);
+      }
+      .comment .who {
+        width: 84px;
+        height: 84px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--vi), #b9a2fb);
+        flex: 0 0 auto;
+      }
+      .comment .txt {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .comment .name {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 22px;
+        color: var(--muted);
+      }
+      .comment .msg {
+        font-weight: 700;
+        font-size: 64px;
+        line-height: 1;
+        letter-spacing: 0.02em;
+        color: var(--or);
+      }
+      .heart {
+        margin-left: auto;
+        width: 36px;
+        height: 36px;
+        background: var(--or);
+        transform: rotate(45deg);
+        position: relative;
+        border-radius: 0 0 6px 0;
+      }
+      .heart::before,
+      .heart::after {
+        content: "";
+        position: absolute;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: var(--or);
+      }
+      .heart::before {
+        left: -18px;
+        top: 0;
+      }
+      .heart::after {
+        left: 0;
+        top: -18px;
+      }
+
+      /* ── Captions ── */
+      #captions {
+        position: absolute;
+        left: 0;
+        top: 1596px;
+        width: 100%;
+        height: 140px;
+        z-index: 30;
+        overflow: visible;
+      }
+      .cg {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 60px;
+        text-align: center;
+        font-weight: 700;
+        font-size: 86px;
+        line-height: 1;
+        letter-spacing: 0.01em;
+        text-transform: uppercase;
+        opacity: 0;
+        visibility: hidden;
+        text-shadow:
+          0 4px 0 rgba(10, 10, 10, 0.9),
+          0 0 28px rgba(10, 10, 10, 0.85);
+      }
+      .cw {
+        display: inline-block;
+        color: var(--fg);
+      }
+
+      #hf-vignette {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 90;
+        background: radial-gradient(
+          ellipse at 50% 48%,
+          transparent 52%,
+          rgba(10, 10, 10, 0.7) 100%
+        );
+      }
+      #grain-overlay {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 100;
+        overflow: hidden;
+      }
+      @keyframes hf-grain-noise {
+        0%,
+        100% {
+          transform: translate(0, 0);
+        }
+        20% {
+          transform: translate(-10%, 5%);
+        }
+        40% {
+          transform: translate(-5%, 15%);
+        }
+        60% {
+          transform: translate(15%, 0);
+        }
+        80% {
+          transform: translate(-15%, 0);
+        }
+      }
+      #grain-overlay .grain-texture {
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+        opacity: 0.08;
+        animation: hf-grain-noise 0.5s steps(1) 60;
+      }
+      #blackout {
+        position: absolute;
+        inset: 0;
+        z-index: 200;
+        background: #000;
+        opacity: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="30"
+      data-width="1080"
+      data-height="1920"
+    >
+      <audio
+        id="narration"
+        class="clip"
+        src="assets/narration.wav"
+        data-start="0"
+        data-duration="26.09"
+        data-track-index="0"
+        data-volume="1"
+      ></audio>
+
+      <div id="glow-main" data-layout-ignore></div>
+      <div id="glow-violet" data-layout-ignore></div>
+      <div id="ghost" data-layout-ignore>YSK_AI1</div>
+
+      <div id="cam">
+        <div id="av-sway">
+          <div id="av-bob">
+            <div id="av-breathe">
+              <img src="assets/avatar.png" alt="" />
+              <!-- Face rig drawn in the source image's pixel space (1792x2400) -->
+              <svg viewBox="0 0 1792 2400" xmlns="http://www.w3.org/2000/svg">
+                <g id="mouth" opacity="0">
+                  <path
+                    d="M806 546 C840 533 938 533 972 546 C962 588 922 598 889 598 C856 598 816 588 806 546 Z"
+                    fill="#F6AC97"
+                  />
+                  <g id="mouth-open">
+                    <path
+                      d="M818 549 Q889 542 960 549 Q950 600 889 603 Q828 600 818 549 Z"
+                      fill="#3B1513"
+                      stroke="#2A100E"
+                      stroke-width="4"
+                    />
+                    <path
+                      d="M823 551 Q889 545 955 551 L950 561 Q889 555 828 561 Z"
+                      fill="#FFFFFF"
+                    />
+                    <ellipse cx="889" cy="589" rx="40" ry="10" fill="#C9605F" />
+                  </g>
+                  <path
+                    d="M814 548 Q889 541 964 548"
+                    fill="none"
+                    stroke="#2A100E"
+                    stroke-width="5"
+                    stroke-linecap="round"
+                  />
+                </g>
+                <g id="lid-l" data-layout-ignore>
+                  <path d="M752 384 Q800 340 847 386 Q800 415 752 384 Z" fill="#F9B29B" />
+                  <path
+                    d="M755 385 Q800 404 845 387"
+                    fill="none"
+                    stroke="#1D0D0B"
+                    stroke-width="5"
+                    stroke-linecap="round"
+                  />
+                </g>
+                <g id="lid-r" data-layout-ignore>
+                  <path d="M924 386 Q972 340 1020 386 Q972 415 924 386 Z" fill="#F9B29B" />
+                  <path
+                    d="M927 387 Q972 404 1017 387"
+                    fill="none"
+                    stroke="#1D0D0B"
+                    stroke-width="5"
+                    stroke-linecap="round"
+                  />
+                </g>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="progress"><div id="progress-fill"></div></div>
+      <div id="topbar">
+        <div class="handle">
+          <div class="badge"></div>
+          <span>@ysk_ai1</span>
+        </div>
+        <div class="tag" id="tag">HTML → VIDEO</div>
+      </div>
+
+      <!-- Headline scenes -->
+      <div id="headline">
+        <div id="h1" class="hl clip" data-start="0" data-duration="2.89" data-track-index="1">
+          <div class="kicker" id="h1k">Этот ролик</div>
+          <div class="big" id="h1b">Я не <span class="acc">монтировал</span></div>
+          <div class="stamp" id="h1s">0 секунд</div>
+        </div>
+        <div id="h2" class="hl clip" data-start="2.9" data-duration="3.77" data-track-index="1">
+          <div class="kicker" id="h2k">Его собрал Claude</div>
+          <div class="big" id="h2b">Из обычного <span class="acc">HTML</span></div>
+        </div>
+        <div id="h3" class="hl clip" data-start="6.68" data-duration="4.38" data-track-index="1">
+          <div class="kicker" id="h3k">Движок</div>
+          <div class="big" id="h3b"><span class="acc">Hyper</span>Frames</div>
+          <div class="sub" id="h3s">веб-страница → видео</div>
+        </div>
+        <div id="h4" class="hl clip" data-start="11.07" data-duration="5.72" data-track-index="1">
+          <div class="kicker" id="h4k">Субтитры · анимации · переходы</div>
+          <div class="big" id="h4b">Это всё <span class="acc">код</span></div>
+          <div class="sub" id="h4s">поменял строчку → ролик готов</div>
+        </div>
+        <div id="h5" class="hl clip" data-start="16.8" data-duration="4.93" data-track-index="1">
+          <div class="kicker" id="h5k">Говорящая голова</div>
+          <div class="big" id="h5b">Мой <span class="acc">аватар</span></div>
+          <div class="sub" id="h5s">ожил прямо в браузере</div>
+        </div>
+        <div id="h6" class="hl clip" data-start="21.74" data-duration="8.26" data-track-index="1">
+          <div class="kicker" id="h6k">Пиши в комментах</div>
+          <div class="big" id="h6b"><span class="acc">«КОД»</span></div>
+          <div class="sub" id="h6s">скину инструкцию</div>
+        </div>
+        <div id="wipe"></div>
+      </div>
+
+      <!-- Props presented on the palm -->
+      <div id="p1" class="prop clip" data-start="3.2" data-duration="3.47" data-track-index="2">
+        <div class="glass"></div>
+        <div class="dots"><i></i><i></i><i></i></div>
+        <div class="code" id="code1">
+          <span class="line"
+            ><span class="k">&lt;div</span> <span class="a">data-start</span>=<span class="v"
+              >"0"</span
+            ><span class="k">&gt;</span></span
+          >
+          <span class="line">
+            <span class="k">&lt;h1&gt;</span>Я НЕ МОНТИРОВАЛ<span class="k">&lt;/h1&gt;</span></span
+          >
+          <span class="line">
+            <span class="k">&lt;video</span> <span class="a">src</span>=<span class="v"
+              >"me.png"</span
+            ><span class="k">&gt;</span></span
+          >
+          <span class="line"><span class="k">&lt;/div&gt;</span></span>
+        </div>
+      </div>
+      <div id="p2" class="prop clip" data-start="6.68" data-duration="4.38" data-track-index="2">
+        <div class="glass"></div>
+        <div class="player-screen"><div class="play" id="play"></div></div>
+        <div class="scrub"><div class="scrub-fill" id="scrub"></div></div>
+      </div>
+      <div id="p3" class="prop clip" data-start="11.07" data-duration="5.72" data-track-index="2">
+        <div class="chip-row">
+          <div class="chip" id="c1">
+            <div class="ico"></div>
+            Аа
+          </div>
+          <div class="chip" id="c2">
+            <div class="ico v"></div>
+            Motion
+          </div>
+          <div class="chip" id="c3">
+            <div class="ico"></div>
+            Fade
+          </div>
+        </div>
+        <div class="edit" id="edit">
+          <div class="glass"></div>
+          <div class="code">
+            <span class="a">duration</span>:
+            <span class="val" data-layout-allow-overflow
+              ><span class="v" id="val-a">0.8</span><span class="v" id="val-b">0.4</span></span
+            >
+            <span class="a">ease</span>: <span class="v">"expo.out"</span>
+          </div>
+        </div>
+        <div class="timer" id="timer">⟳ РЕНДЕР · 1:00</div>
+      </div>
+      <div id="p4" class="prop clip" data-start="16.8" data-duration="4.93" data-track-index="2">
+        <div class="still" id="still">
+          <img src="assets/avatar-still.jpg" alt="" /><b>AVATAR.PNG</b>
+        </div>
+        <div class="arrow" id="arrow"></div>
+        <div class="live" id="live"><i></i>LIVE</div>
+      </div>
+      <div id="p5" class="prop clip" data-start="21.74" data-duration="8.26" data-track-index="2">
+        <div class="comment" id="comment">
+          <div class="who"></div>
+          <div class="txt">
+            <div class="name">@твой_ник</div>
+            <div class="msg" id="msg">КОД</div>
+          </div>
+          <div class="heart" id="heart"></div>
+        </div>
+      </div>
+
+      <div id="captions"></div>
+
+      <div id="hf-vignette"></div>
+      <div id="grain-overlay"><div class="grain-texture"></div></div>
+      <div id="blackout"></div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      const DURATION = 30;
+      const FPS = 30;
+
+      /* @generated:begin — tools/inject.py writes WORDS / SENT / ENV from tools/narration.json */
+      // [display word, start s, end s, sentence index] — Piper ru_RU-dmitri timings
+      const WORDS = [
+        ["Этот", 0.25, 0.529, 0],
+        ["ролик", 0.529, 0.814, 0],
+        ["я", 0.814, 0.949, 0],
+        ["не", 0.949, 1.088, 0],
+        ["монтировал.", 1.088, 1.657, 0],
+        ["Ни", 1.877, 2.062, 1],
+        ["секунды.", 2.062, 2.625, 1],
+        ["Его", 3.045, 3.511, 2],
+        ["целиком", 3.511, 4.229, 2],
+        ["собрал", 4.229, 4.72, 2],
+        ["Claude", 4.72, 4.99, 2],
+        ["из", 4.99, 5.227, 2],
+        ["обычного", 5.227, 6.174, 2],
+        ["HTML.", 6.174, 6.427, 2],
+        ["Движок", 6.827, 7.24, 3],
+        ["называется", 7.24, 8.236, 3],
+        ["HyperFrames:", 8.236, 8.497, 3],
+        ["пишешь", 8.717, 9.049, 3],
+        ["веб-страницу", 9.049, 9.707, 3],
+        ["получаешь", 9.877, 10.42, 3],
+        ["видео.", 10.42, 10.818, 3],
+        ["Субтитры,", 11.218, 11.7, 4],
+        ["анимации,", 11.7, 12.473, 4],
+        ["переходы", 12.473, 13.1, 4],
+        ["это", 13.1, 13.408, 4],
+        ["всё", 13.408, 13.57, 4],
+        ["код.", 13.57, 13.733, 4],
+        ["Поменял", 14.033, 14.494, 5],
+        ["строчку", 14.494, 14.814, 5],
+        ["и", 14.814, 14.961, 5],
+        ["ролик", 14.961, 15.27, 5],
+        ["пересобран", 15.27, 15.889, 5],
+        ["за", 15.889, 16.041, 5],
+        ["минуту.", 16.041, 16.497, 5],
+        ["А", 16.947, 17.069, 6],
+        ["говорящая", 17.069, 17.695, 6],
+        ["голова", 17.695, 18.074, 6],
+        ["мой", 18.074, 18.205, 6],
+        ["аватар.", 18.205, 18.583, 6],
+        ["Обычная", 18.863, 19.328, 7],
+        ["картинка,", 19.328, 19.688, 7],
+        ["которую", 19.688, 20.152, 7],
+        ["оживили", 20.152, 20.617, 7],
+        ["прямо", 20.617, 20.856, 7],
+        ["в", 20.856, 20.969, 7],
+        ["браузере.", 20.969, 21.437, 7],
+        ["Хочешь", 21.887, 22.246, 8],
+        ["такой", 22.246, 22.598, 8],
+        ["же", 22.598, 22.771, 8],
+        ["конвейер", 22.771, 23.302, 8],
+        ["пиши", 23.302, 23.649, 8],
+        ["в", 23.649, 23.816, 8],
+        ["комментах", 23.816, 24.353, 8],
+        ["«КОД»,", 24.353, 24.532, 8],
+        ["скину", 24.532, 24.885, 8],
+        ["инструкцию.", 24.885, 25.589, 8],
+      ];
+      const SENT = [
+        [0.25, 1.657],
+        [1.877, 2.625],
+        [3.045, 6.427],
+        [6.827, 10.818],
+        [11.218, 13.733],
+        [14.033, 16.497],
+        [16.947, 18.583],
+        [18.863, 21.437],
+        [21.887, 25.589],
+      ];
+      // narration loudness at 30 fps (0..1), drives the mouth rig
+      const ENV = [
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.13, 0.51, 0.69, 0.39, 0.13, 0.18, 0.25, 0.14, 0.09,
+        0.2, 0.35, 0.63, 0.91, 0.87, 0.7, 0.59, 0.35, 0.12, 0.12, 0.37, 0.74, 0.81, 0.52, 0.32, 0.3,
+        0.24, 0.27, 0.37, 0.28, 0.13, 0.11, 0.14, 0.21, 0.32, 0.32, 0.25, 0.25, 0.21, 0.16, 0.16,
+        0.14, 0.08, 0.03, 0.01, 0.0, 0.0, 0.0, 0.0, 0.0, 0.06, 0.21, 0.34, 0.35, 0.32, 0.36, 0.37,
+        0.3, 0.19, 0.09, 0.04, 0.13, 0.36, 0.61, 0.57, 0.32, 0.19, 0.25, 0.3, 0.25, 0.14, 0.06,
+        0.02, 0.01, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.05, 0.18, 0.34, 0.35,
+        0.44, 0.75, 0.72, 0.32, 0.13, 0.15, 0.18, 0.27, 0.42, 0.4, 0.19, 0.08, 0.22, 0.54, 0.68,
+        0.47, 0.31, 0.37, 0.42, 0.32, 0.34, 0.44, 0.3, 0.27, 0.61, 0.91, 1.0, 0.89, 0.58, 0.27, 0.1,
+        0.04, 0.04, 0.12, 0.28, 0.46, 0.56, 0.44, 0.2, 0.07, 0.03, 0.01, 0.01, 0.0, 0.0, 0.1, 0.26,
+        0.3, 0.36, 0.6, 0.61, 0.31, 0.24, 0.5, 0.62, 0.46, 0.4, 0.35, 0.18, 0.24, 0.47, 0.55, 0.57,
+        0.58, 0.4, 0.2, 0.29, 0.54, 0.58, 0.37, 0.24, 0.27, 0.21, 0.09, 0.15, 0.27, 0.32, 0.44,
+        0.44, 0.23, 0.07, 0.06, 0.26, 0.63, 0.84, 0.69, 0.42, 0.29, 0.27, 0.24, 0.26, 0.37, 0.45,
+        0.39, 0.28, 0.2, 0.12, 0.04, 0.01, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.01, 0.05,
+        0.13, 0.21, 0.33, 0.43, 0.44, 0.48, 0.52, 0.64, 0.73, 0.5, 0.17, 0.1, 0.24, 0.38, 0.36,
+        0.33, 0.39, 0.4, 0.53, 0.84, 0.97, 0.73, 0.32, 0.15, 0.19, 0.19, 0.15, 0.1, 0.09, 0.19, 0.5,
+        0.83, 0.74, 0.35, 0.13, 0.21, 0.37, 0.32, 0.17, 0.11, 0.17, 0.3, 0.4, 0.41, 0.35, 0.29,
+        0.24, 0.21, 0.18, 0.13, 0.05, 0.01, 0.0, 0.0, 0.01, 0.08, 0.27, 0.44, 0.54, 0.65, 0.61,
+        0.41, 0.3, 0.24, 0.16, 0.15, 0.37, 0.58, 0.44, 0.19, 0.1, 0.08, 0.09, 0.24, 0.39, 0.39,
+        0.32, 0.31, 0.33, 0.33, 0.26, 0.15, 0.09, 0.11, 0.15, 0.13, 0.06, 0.03, 0.01, 0.01, 0.14,
+        0.36, 0.45, 0.56, 0.56, 0.35, 0.31, 0.41, 0.56, 0.84, 1.0, 0.92, 0.67, 0.4, 0.25, 0.16,
+        0.15, 0.27, 0.37, 0.34, 0.25, 0.19, 0.19, 0.27, 0.29, 0.23, 0.17, 0.13, 0.08, 0.03, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.01, 0.06, 0.15, 0.3, 0.3, 0.15, 0.11, 0.22,
+        0.34, 0.41, 0.29, 0.11, 0.08, 0.22, 0.4, 0.48, 0.38, 0.2, 0.07, 0.1, 0.24, 0.3, 0.27, 0.35,
+        0.41, 0.45, 0.7, 0.94, 0.85, 0.48, 0.21, 0.18, 0.2, 0.25, 0.35, 0.32, 0.16, 0.05, 0.13,
+        0.31, 0.34, 0.25, 0.14, 0.09, 0.21, 0.39, 0.4, 0.25, 0.23, 0.35, 0.31, 0.14, 0.05, 0.04,
+        0.22, 0.43, 0.34, 0.14, 0.19, 0.28, 0.2, 0.17, 0.28, 0.36, 0.4, 0.5, 0.5, 0.26, 0.07, 0.06,
+        0.18, 0.38, 0.53, 0.46, 0.23, 0.07, 0.03, 0.01, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.08,
+        0.29, 0.41, 0.4, 0.43, 0.42, 0.47, 0.74, 0.95, 0.89, 0.56, 0.26, 0.13, 0.05, 0.02, 0.12,
+        0.36, 0.56, 0.47, 0.26, 0.17, 0.11, 0.05, 0.12, 0.29, 0.3, 0.14, 0.03, 0.01, 0.0, 0.06,
+        0.23, 0.39, 0.41, 0.55, 0.79, 0.69, 0.41, 0.25, 0.12, 0.03, 0.08, 0.21, 0.32, 0.42, 0.41,
+        0.32, 0.29, 0.25, 0.32, 0.56, 0.55, 0.32, 0.35, 0.61, 0.67, 0.44, 0.24, 0.2, 0.24, 0.32,
+        0.34, 0.31, 0.31, 0.3, 0.24, 0.25, 0.29, 0.22, 0.12, 0.12, 0.18, 0.17, 0.11, 0.04, 0.01,
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.01, 0.17, 0.38, 0.41, 0.49, 0.75,
+        0.91, 0.87, 0.84, 0.92, 0.8, 0.51, 0.43, 0.42, 0.38, 0.38, 0.25, 0.23, 0.43, 0.57, 0.72,
+        0.91, 0.81, 0.48, 0.52, 0.86, 1.0, 0.94, 0.69, 0.37, 0.21, 0.28, 0.52, 0.82, 0.98, 1.0, 1.0,
+        0.9, 0.61, 0.41, 0.52, 0.55, 0.28, 0.07, 0.12, 0.34, 0.53, 0.49, 0.29, 0.12, 0.04, 0.01,
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.05, 0.2, 0.31, 0.22, 0.28, 0.5, 0.49, 0.5, 0.65, 0.53, 0.24,
+        0.27, 0.41, 0.28, 0.16, 0.23, 0.23, 0.12, 0.05, 0.13, 0.24, 0.31, 0.36, 0.32, 0.19, 0.19,
+        0.32, 0.31, 0.13, 0.05, 0.17, 0.31, 0.26, 0.12, 0.13, 0.33, 0.59, 0.67, 0.57, 0.58, 0.71,
+        0.76, 0.63, 0.43, 0.34, 0.37, 0.4, 0.36, 0.43, 0.49, 0.37, 0.35, 0.32, 0.15, 0.07, 0.34,
+        0.79, 0.97, 0.76, 0.46, 0.34, 0.26, 0.14, 0.16, 0.43, 0.71, 0.68, 0.5, 0.36, 0.25, 0.19,
+        0.2, 0.27, 0.25, 0.18, 0.15, 0.11, 0.05, 0.01, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        0.0, 0.0, 0.01, 0.09, 0.4, 0.68, 0.54, 0.38, 0.4, 0.33, 0.27, 0.22, 0.1, 0.15, 0.27, 0.17,
+        0.06, 0.12, 0.35, 0.64, 0.65, 0.44, 0.33, 0.33, 0.27, 0.13, 0.09, 0.22, 0.33, 0.25, 0.17,
+        0.21, 0.28, 0.33, 0.37, 0.35, 0.27, 0.21, 0.15, 0.08, 0.03, 0.01, 0.0, 0.04, 0.15, 0.34,
+        0.46, 0.38, 0.31, 0.25, 0.12, 0.05, 0.09, 0.26, 0.39, 0.33, 0.32, 0.42, 0.4, 0.22, 0.08,
+        0.08, 0.15, 0.19, 0.2, 0.2, 0.15, 0.13, 0.34, 0.72, 0.78, 0.45, 0.33, 0.41, 0.27, 0.09,
+        0.06, 0.18, 0.45, 0.53, 0.3, 0.1, 0.09, 0.17, 0.26, 0.23, 0.1, 0.04, 0.12, 0.3, 0.41, 0.33,
+        0.3, 0.36, 0.33, 0.24, 0.16, 0.07, 0.06, 0.22, 0.4, 0.36, 0.16, 0.06, 0.05, 0.06, 0.08,
+        0.09, 0.12, 0.15, 0.15, 0.14, 0.12, 0.07, 0.03, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0,
+      ];
+      /* @generated:end */
+
+      const at = (i) => WORDS[i][1];
+      const S = (i) => SENT[i][0];
+      // Scene boundaries (match the headline/prop clips' data-start above)
+      const B = [0, 2.9, 6.68, 11.07, 16.8, 21.74]; // ≈ sentence starts 2/3/4/6/8 − 0.15s
+
+      // Deterministic PRNG for blink spacing
+      function mulberry32(a) {
+        return function () {
+          a |= 0;
+          a = (a + 0x6d2b79f5) | 0;
+          let t = Math.imul(a ^ (a >>> 15), 1 | a);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+
+      // ── Lip-sync: mouth rig follows the narration's loudness envelope, frame by frame ──
+      SENT.forEach(([s, e]) => {
+        tl.to("#mouth", { opacity: 1, duration: 0.06, ease: "none" }, Math.max(0, s - 0.06));
+        tl.to("#mouth", { opacity: 0, duration: 0.08, ease: "none" }, e + 0.02);
+      });
+      ENV.forEach((v, i) => {
+        const t = i / FPS;
+        const open = Math.min(1, 0.12 + v * 0.95);
+        tl.set("#mouth-open", { scaleY: open, svgOrigin: "889 548" }, t);
+        tl.set("#av-bob", { y: -v * 7 }, t);
+      });
+
+      // ── Blinks every 2.4–4.2s (seeded), lids close from the top ──
+      const LIDS = [
+        ["#lid-l", "800 352"],
+        ["#lid-r", "972 352"],
+      ];
+      LIDS.forEach(([id, o]) => tl.set(id, { scaleY: 0, svgOrigin: o }, 0));
+      const rnd = mulberry32(1878);
+      for (let t = 1.1; t < DURATION - 0.5; t += 2.4 + rnd() * 1.8) {
+        LIDS.forEach(([id, o]) => {
+          tl.to(id, { scaleY: 1, svgOrigin: o, duration: 0.07, ease: "power2.in" }, t);
+          tl.to(id, { scaleY: 0, svgOrigin: o, duration: 0.1, ease: "power2.out" }, t + 0.09);
+        });
+      }
+
+      // ── Idle body motion (seekable, finite repeats) ──
+      tl.fromTo(
+        "#av-sway",
+        { rotation: -0.8 },
+        { rotation: 0.8, duration: 2.5, ease: "sine.inOut", yoyo: true, repeat: 11 },
+        0,
+      );
+      tl.fromTo(
+        "#av-breathe",
+        { scale: 1 },
+        { scale: 1.012, duration: 1.9, ease: "sine.inOut", yoyo: true, repeat: 15 },
+        0,
+      );
+      tl.fromTo(
+        "#glow-main",
+        { scale: 0.94, opacity: 0.85 },
+        { scale: 1.06, opacity: 1, duration: 3, ease: "sine.inOut", yoyo: true, repeat: 9 },
+        0,
+      );
+      tl.fromTo(
+        "#glow-violet",
+        { x: 0, y: 0 },
+        { x: -60, y: -40, duration: 5, ease: "sine.inOut", yoyo: true, repeat: 5 },
+        0,
+      );
+      tl.fromTo("#ghost", { x: 0 }, { x: -220, duration: DURATION, ease: "none" }, 0);
+
+      // ── Camera punch-ins on beats (hook, "секунды", HyperFrames, аватар, КОД) ──
+      [
+        [0, 1.0],
+        [S(1) - 0.05, 1.1],
+        [B[1], 1.0],
+        [B[2], 1.06],
+        [B[3], 1.0],
+        [B[4], 1.12],
+        [B[5], 1.0],
+        [at(53) - 0.05, 1.08],
+      ].forEach(([t, s]) => tl.set("#cam", { scale: s }, t));
+      tl.fromTo(
+        "#cam",
+        { opacity: 0, y: 60 },
+        { opacity: 1, y: 0, duration: 0.6, ease: "expo.out" },
+        0.05,
+      );
+
+      // ── Top bar ──
+      tl.fromTo(
+        "#progress-fill",
+        { scaleX: 0 },
+        { scaleX: 1, duration: DURATION, ease: "none" },
+        0,
+      );
+      tl.fromTo(
+        ".handle",
+        { x: -40, opacity: 0 },
+        { x: 0, opacity: 1, duration: 0.5, ease: "power3.out" },
+        0.2,
+      );
+      tl.fromTo(
+        "#tag",
+        { x: 40, opacity: 0 },
+        { x: 0, opacity: 1, duration: 0.45, ease: "back.out(1.6)" },
+        0.35,
+      );
+      tl.to(
+        ".badge",
+        {
+          boxShadow: "0 0 42px rgba(255, 138, 0, 0.95)",
+          duration: 1.2,
+          ease: "sine.inOut",
+          yoyo: true,
+          repeat: 11,
+        },
+        0.8,
+      );
+
+      // ── Headline transitions: brand-gradient wipe covers the zone at each boundary ──
+      B.slice(1).forEach((t) => {
+        tl.set("#wipe", { transformOrigin: "left center" }, t - 0.2);
+        tl.fromTo("#wipe", { scaleX: 0 }, { scaleX: 1, duration: 0.2, ease: "power3.in" }, t - 0.2);
+        tl.set("#wipe", { transformOrigin: "right center" }, t);
+        tl.to("#wipe", { scaleX: 0, duration: 0.28, ease: "expo.out" }, t);
+      });
+      function headIn(n, t, bigEase) {
+        tl.fromTo(
+          "#h" + n + "k",
+          { x: -50, opacity: 0 },
+          { x: 0, opacity: 1, duration: 0.32, ease: "power2.out" },
+          t + 0.06,
+        );
+        tl.fromTo(
+          "#h" + n + "b",
+          { y: 70, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.55, ease: bigEase },
+          t + 0.12,
+        );
+      }
+      headIn(1, 0.25, "expo.out");
+      headIn(2, B[1], "power4.out");
+      headIn(3, B[2], "back.out(1.4)");
+      headIn(4, B[3], "expo.out");
+      headIn(5, B[4], "power4.out");
+      headIn(6, B[5], "back.out(1.8)");
+      tl.fromTo(
+        "#h1s",
+        { scale: 2.2, opacity: 0, rotation: -14 },
+        { scale: 1, opacity: 1, rotation: -6, duration: 0.35, ease: "back.out(2.2)" },
+        S(1),
+      );
+      tl.fromTo(
+        "#h3s",
+        { opacity: 0, letterSpacing: "0.3em" },
+        { opacity: 1, letterSpacing: "0.06em", duration: 0.5, ease: "power2.out" },
+        at(17) - 0.05,
+      );
+      tl.fromTo(
+        "#h4s",
+        { opacity: 0, y: 16 },
+        { opacity: 1, y: 0, duration: 0.35, ease: "power3.out" },
+        S(5),
+      );
+      tl.fromTo(
+        "#h5s",
+        { opacity: 0, x: -30 },
+        { opacity: 1, x: 0, duration: 0.4, ease: "expo.out" },
+        S(7),
+      );
+      tl.fromTo(
+        "#h6s",
+        { opacity: 0, y: 16 },
+        { opacity: 1, y: 0, duration: 0.35, ease: "power3.out" },
+        at(54),
+      );
+      tl.fromTo(
+        "#h6b",
+        { scale: 1 },
+        {
+          scale: 1.06,
+          duration: 0.6,
+          ease: "sine.inOut",
+          yoyo: true,
+          repeat: 5,
+          transformOrigin: "left bottom",
+        },
+        at(53) + 0.2,
+      );
+
+      // ── Props ──
+      const propIn = (id, t) =>
+        tl.fromTo(
+          id,
+          { scale: 0.6, opacity: 0, rotation: -4, transformOrigin: "60% 100%" },
+          { scale: 1, opacity: 1, rotation: 0, duration: 0.5, ease: "back.out(1.5)" },
+          t,
+        );
+      // P1 code card types in line by line
+      propIn("#p1", 3.2);
+      tl.fromTo(
+        "#code1 .line",
+        { opacity: 0, x: -14 },
+        { opacity: 1, x: 0, duration: 0.2, ease: "power2.out", stagger: 0.22 },
+        3.45,
+      );
+      // P2 player: play button pops on "видео", scrubber runs
+      propIn("#p2", B[2] + 0.05);
+      tl.fromTo(
+        "#play",
+        { scale: 0 },
+        { scale: 1, duration: 0.4, ease: "back.out(2.5)" },
+        at(20) - 0.1,
+      );
+      tl.fromTo("#scrub", { scaleX: 0 }, { scaleX: 1, duration: 3.2, ease: "none" }, B[2] + 0.3);
+      // P3 chips land on each word, value edit on "Поменял строчку", render timer on "минуту"
+      [
+        ["#c1", at(21)],
+        ["#c2", at(22)],
+        ["#c3", at(23)],
+      ].forEach(([id, t], i) =>
+        tl.fromTo(
+          id,
+          { y: 40, opacity: 0, scale: 0.8 },
+          {
+            y: 0,
+            opacity: 1,
+            scale: 1,
+            duration: 0.35,
+            ease: i === 1 ? "back.out(2.4)" : "power3.out",
+          },
+          t - 0.05,
+        ),
+      );
+      tl.fromTo(
+        "#edit",
+        { y: 30, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.4, ease: "expo.out" },
+        at(27) - 0.1,
+      );
+      tl.fromTo("#val-a", { y: 0 }, { y: -44, duration: 0.25, ease: "power3.inOut" }, at(28));
+      tl.fromTo("#val-b", { y: 44 }, { y: 0, duration: 0.25, ease: "power3.inOut" }, at(28));
+      tl.fromTo(
+        "#timer",
+        { scale: 0.5, opacity: 0 },
+        {
+          scale: 1,
+          opacity: 1,
+          duration: 0.35,
+          ease: "back.out(2)",
+          transformOrigin: "left center",
+        },
+        at(33) - 0.1,
+      );
+      // P4 static picture → arrow → LIVE on "оживили"
+      tl.fromTo(
+        "#still",
+        { y: 40, opacity: 0, rotation: -14 },
+        { y: 0, opacity: 1, rotation: -5, duration: 0.5, ease: "back.out(1.6)" },
+        at(40) - 0.1,
+      );
+      tl.fromTo(
+        "#arrow",
+        { scaleX: 0 },
+        { scaleX: 1, duration: 0.35, ease: "expo.out" },
+        at(42) - 0.1,
+      );
+      tl.fromTo(
+        "#live",
+        { scale: 0.4, opacity: 0 },
+        { scale: 1, opacity: 1, duration: 0.35, ease: "back.out(2.6)" },
+        at(42) + 0.15,
+      );
+      tl.to(
+        "#live i",
+        { scale: 1.6, opacity: 0.4, duration: 0.45, ease: "sine.inOut", yoyo: true, repeat: 5 },
+        at(42) + 0.4,
+      );
+      // P5 comment bubble "КОД"
+      propIn("#p5", B[5] + 0.05);
+      tl.fromTo(
+        "#msg",
+        { scale: 0.3, opacity: 0 },
+        {
+          scale: 1,
+          opacity: 1,
+          duration: 0.4,
+          ease: "back.out(3)",
+          transformOrigin: "left center",
+        },
+        at(53) - 0.05,
+      );
+      tl.fromTo(
+        "#heart",
+        { scale: 0, rotation: 45 },
+        { scale: 1, rotation: 45, duration: 0.4, ease: "back.out(3)" },
+        at(53) + 0.35,
+      );
+      tl.to(
+        "#heart",
+        { scale: 1.25, duration: 0.4, ease: "sine.inOut", yoyo: true, repeat: 7 },
+        at(53) + 0.9,
+      );
+
+      // ── Captions: phrase groups (≤3 words), active word in brand orange ──
+      const KEY = new Set([
+        "монтировал.",
+        "Claude",
+        "HTML.",
+        "HyperFrames:",
+        "видео.",
+        "код.",
+        "минуту.",
+        "аватар.",
+        "браузере.",
+        "«КОД»,",
+        "инструкцию.",
+      ]);
+      const groups = [];
+      let cur = [];
+      WORDS.forEach((w, i) => {
+        cur.push(w);
+        const next = WORDS[i + 1];
+        const brk = /[.,:!?»]$/.test(w[0]) || !next || next[3] !== w[3] || cur.length >= 3;
+        if (brk) {
+          groups.push(cur);
+          cur = [];
+        }
+      });
+      const capRoot = document.getElementById("captions");
+      const fit = window.__hyperframes && window.__hyperframes.fitTextFontSize;
+      groups.forEach((g, gi) => {
+        const el = document.createElement("div");
+        el.className = "cg";
+        el.id = "cg-" + gi;
+        const line = document.createElement("div");
+        el.appendChild(line);
+        g.forEach((w, wi) => {
+          const span = document.createElement("span");
+          span.className = "cw";
+          span.id = "cg-" + gi + "-" + wi;
+          span.textContent = w[0].replace(/[.,:]$/, "");
+          if (wi > 0) line.appendChild(document.createTextNode(" "));
+          line.appendChild(span);
+        });
+        if (fit) {
+          const r = fit(line.textContent.toUpperCase(), {
+            fontFamily: "Oswald",
+            fontWeight: 700,
+            maxWidth: 940 / 1.06,
+            baseFontSize: 86,
+            minFontSize: 54,
+          });
+          el.style.fontSize = r.fontSize + "px";
+        }
+        capRoot.appendChild(el);
+      });
+      groups.forEach((g, gi) => {
+        const el = "#cg-" + gi;
+        const start = Math.max(0, g[0][1] - 0.05);
+        const nextStart = groups[gi + 1] ? groups[gi + 1][0][1] - 0.05 : DURATION;
+        const stop = Math.min(nextStart, g[g.length - 1][2] + 0.35);
+        tl.set(el, { visibility: "visible" }, start);
+        tl.fromTo(
+          el,
+          { opacity: 0, scale: 0.86 },
+          { opacity: 1, scale: 1, duration: 0.14, ease: "back.out(2)" },
+          start,
+        );
+        g.forEach((w, wi) => {
+          const span = "#cg-" + gi + "-" + wi;
+          tl.to(span, { color: "#FF8A00", scale: 1.06, duration: 0.07, ease: "power2.out" }, w[1]);
+          tl.to(
+            span,
+            {
+              color: KEY.has(w[0]) ? "#FFC24B" : "#FFF6EC",
+              scale: 1,
+              duration: 0.12,
+              ease: "sine.out",
+            },
+            Math.max(w[1] + 0.08, w[2]),
+          );
+        });
+        tl.to(el, { opacity: 0, duration: 0.08, ease: "power2.in" }, stop - 0.08);
+        tl.set(el, { opacity: 0, visibility: "hidden" }, stop);
+      });
+
+      // ── Outro: fade to black on the final beat ──
+      tl.to("#blackout", { opacity: 1, duration: 0.4, ease: "power2.in" }, 29.6);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
