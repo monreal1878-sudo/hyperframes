@@ -1,0 +1,796 @@
+<!doctype html>
+<html lang="ru" data-resolution="portrait">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      /*
+       * @ysk_ai1 · говорящая голова + субтитры · 30s · 1080x1920 · без звука
+       * Only three things on screen: the avatar, the subtitles, the motion.
+       * Brand: bg #0A0A0A → #171310 · accent #FF8A00 → #FFC24B · Oswald, ALL CAPS
+       * Caption styles follow the HyperFrames registry: caption-highlight (phrases)
+       * and caption-kinetic-slam (key words).
+       */
+      @font-face {
+        font-family: "Oswald";
+        font-weight: 200 700;
+        src: url("fonts/Oswald-cyrillic.woff2") format("woff2");
+        unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+      }
+      @font-face {
+        font-family: "Oswald";
+        font-weight: 200 700;
+        src: url("fonts/Oswald-latin.woff2") format("woff2");
+        unicode-range:
+          U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308,
+          U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+      }
+      :root {
+        --bg0: #0a0a0a;
+        --bg1: #171310;
+        --or: #ff8a00;
+        --or2: #ffc24b;
+        --fg: #fff6ec;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: var(--bg0);
+      }
+      body {
+        font-family: "Oswald", sans-serif;
+      }
+      #root {
+        position: relative;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: radial-gradient(ellipse 110% 75% at 50% 42%, var(--bg1), var(--bg0) 72%);
+      }
+      #glow {
+        position: absolute;
+        left: 540px;
+        top: 820px;
+        width: 1400px;
+        height: 1400px;
+        margin: -700px 0 0 -700px;
+        border-radius: 50%;
+        background: radial-gradient(
+          circle,
+          rgba(255, 138, 0, 0.45),
+          rgba(255, 138, 0, 0.12) 36%,
+          rgba(255, 138, 0, 0) 62%
+        );
+      }
+
+      #glow-hit {
+        position: absolute;
+        left: 540px;
+        top: 1080px;
+        width: 1200px;
+        height: 1200px;
+        margin: -600px 0 0 -600px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(255, 194, 75, 0.4), rgba(255, 138, 0, 0) 60%);
+        opacity: 0;
+      }
+
+      /* Camera stack: cam (cut framing) → push (slow push-in) → shake (hits) */
+      #cam,
+      #push,
+      #shake {
+        position: absolute;
+        inset: 0;
+        transform-origin: 540px 780px;
+      }
+      /* Avatar stack: sway (rotation) → bob (speech) → breathe (scale) */
+      #av-sway {
+        position: absolute;
+        left: -170px;
+        top: 400px;
+        width: 1433px;
+        height: 1920px;
+        transform-origin: 710px 1400px;
+      }
+      #av-bob,
+      #av-breathe {
+        position: absolute;
+        inset: 0;
+      }
+      #av-breathe {
+        transform-origin: 710px 1200px;
+      }
+      #av-breathe img,
+      #av-breathe svg {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1433px;
+        height: 1920px;
+      }
+
+      /* Phrase captions (caption-highlight): sticker outline + accent pill on the active word */
+      #captions {
+        position: absolute;
+        left: 0;
+        top: 1360px;
+        width: 100%;
+        height: 170px;
+        z-index: 30;
+        overflow: visible;
+      }
+      .cg {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 50px;
+        opacity: 0;
+        visibility: hidden;
+      }
+      .cg-line {
+        text-align: center;
+        font-weight: 700;
+        font-size: 104px;
+        line-height: 1.1;
+        text-transform: uppercase;
+        letter-spacing: 0.01em;
+      }
+      .cw {
+        position: relative;
+        display: inline-block;
+        margin: 0 0.09em;
+      }
+      .cw-bg {
+        position: absolute;
+        left: -0.12em;
+        right: -0.12em;
+        top: 0.06em;
+        bottom: 0.02em;
+        border-radius: 0.14em;
+        background: linear-gradient(135deg, var(--or), var(--or2));
+        box-shadow: 0 0 34px rgba(255, 138, 0, 0.55);
+        transform: scaleX(0);
+        opacity: 0;
+      }
+      .cw-t {
+        position: relative;
+        color: var(--fg);
+        -webkit-text-stroke: 14px var(--bg0);
+        paint-order: stroke fill;
+      }
+
+      /* Key words (caption-kinetic-slam): one huge word, alternating entrances */
+      #slams {
+        position: absolute;
+        left: 0;
+        top: 1080px;
+        width: 100%;
+        height: 0;
+        z-index: 40;
+      }
+      .slam {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        text-align: center;
+        font-weight: 700;
+        line-height: 0.9;
+        text-transform: uppercase;
+        letter-spacing: -0.01em;
+        color: var(--or);
+        -webkit-text-stroke: 18px var(--bg0);
+        paint-order: stroke fill;
+        text-shadow: 0 0 60px rgba(255, 138, 0, 0.55);
+        opacity: 0;
+        visibility: hidden;
+        white-space: nowrap;
+      }
+      .slam.white {
+        color: var(--fg);
+      }
+      #flash {
+        position: absolute;
+        inset: 0;
+        z-index: 50;
+        background: radial-gradient(
+          circle at 50% 55%,
+          rgba(255, 194, 75, 0.55),
+          rgba(255, 138, 0, 0) 65%
+        );
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      #hf-vignette {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 90;
+        background: radial-gradient(
+          ellipse at 50% 46%,
+          transparent 55%,
+          rgba(10, 10, 10, 0.72) 100%
+        );
+      }
+      #grain-overlay {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 100;
+        overflow: hidden;
+      }
+      @keyframes hf-grain-noise {
+        0%,
+        100% {
+          transform: translate(0, 0);
+        }
+        20% {
+          transform: translate(-10%, 5%);
+        }
+        40% {
+          transform: translate(-5%, 15%);
+        }
+        60% {
+          transform: translate(15%, 0);
+        }
+        80% {
+          transform: translate(-15%, 0);
+        }
+      }
+      #grain-overlay .grain-texture {
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+        opacity: 0.08;
+        animation: hf-grain-noise 0.5s steps(1) 60;
+      }
+      #blackout {
+        position: absolute;
+        inset: 0;
+        z-index: 200;
+        background: #000;
+        opacity: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="30"
+      data-width="1080"
+      data-height="1920"
+    >
+      <div id="glow" data-layout-ignore></div>
+      <div id="glow-hit" data-layout-ignore></div>
+
+      <div id="cam">
+        <div id="push">
+          <div id="shake">
+            <div id="av-sway">
+              <div id="av-bob">
+                <div id="av-breathe">
+                  <img src="assets/avatar.png" alt="" />
+                  <!-- Face rig drawn in the source image's pixel space (1792x2400) -->
+                  <svg viewBox="0 0 1792 2400" xmlns="http://www.w3.org/2000/svg">
+                    <g id="mouth" opacity="0">
+                      <path
+                        d="M806 546 C840 533 938 533 972 546 C962 588 922 598 889 598 C856 598 816 588 806 546 Z"
+                        fill="#F6AC97"
+                      />
+                      <g id="mouth-open">
+                        <path
+                          d="M818 549 Q889 542 960 549 Q950 600 889 603 Q828 600 818 549 Z"
+                          fill="#3B1513"
+                          stroke="#2A100E"
+                          stroke-width="4"
+                        />
+                        <path
+                          d="M823 551 Q889 545 955 551 L950 561 Q889 555 828 561 Z"
+                          fill="#FFFFFF"
+                        />
+                        <ellipse cx="889" cy="589" rx="40" ry="10" fill="#C9605F" />
+                      </g>
+                      <path
+                        d="M814 548 Q889 541 964 548"
+                        fill="none"
+                        stroke="#2A100E"
+                        stroke-width="5"
+                        stroke-linecap="round"
+                      />
+                    </g>
+                    <g id="lid-l" data-layout-ignore>
+                      <path d="M752 384 Q800 340 847 386 Q800 415 752 384 Z" fill="#F9B29B" />
+                      <path
+                        d="M755 385 Q800 404 845 387"
+                        fill="none"
+                        stroke="#1D0D0B"
+                        stroke-width="5"
+                        stroke-linecap="round"
+                      />
+                    </g>
+                    <g id="lid-r" data-layout-ignore>
+                      <path d="M924 386 Q972 340 1020 386 Q972 415 924 386 Z" fill="#F9B29B" />
+                      <path
+                        d="M927 387 Q972 404 1017 387"
+                        fill="none"
+                        stroke="#1D0D0B"
+                        stroke-width="5"
+                        stroke-linecap="round"
+                      />
+                    </g>
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- stroke + pill overhang bleed a few px past the line box by design -->
+      <div id="captions" data-layout-allow-overflow></div>
+      <div id="slams" data-layout-allow-overflow></div>
+      <div id="flash" data-layout-ignore></div>
+
+      <div id="hf-vignette"></div>
+      <div id="grain-overlay"><div class="grain-texture"></div></div>
+      <div id="blackout"></div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      const DURATION = 30;
+      const FPS = 30;
+
+      /* @generated:begin — tools/inject.py writes WORDS / SENT / ENV from tools/timing.json */
+      // [display word, start s, end s, sentence index] — timing guide (no audio in the video)
+      const WORDS = [
+        ["Я", 0.29, 0.473, 0],
+        ["больше", 0.473, 0.865, 0],
+        ["не", 0.865, 1.056, 0],
+        ["монтирую", 1.056, 1.814, 0],
+        ["рилсы.", 1.814, 2.199, 0],
+        ["Вообще.", 2.431, 3.045, 1],
+        ["Этот", 3.567, 4.192, 2],
+        ["ролик", 4.192, 4.828, 2],
+        ["собрал", 4.828, 5.475, 2],
+        ["Claude", 5.475, 5.831, 2],
+        ["Opus", 5.831, 6.165, 2],
+        ["5.5", 6.165, 6.477, 2],
+        ["на", 6.477, 6.791, 2],
+        ["HyperFrames.", 6.791, 7.201, 2],
+        ["Я", 7.665, 7.861, 3],
+        ["пишу", 7.861, 8.27, 3],
+        ["словами,", 8.27, 8.887, 3],
+        ["что", 8.887, 9.098, 3],
+        ["хочу.", 9.098, 9.505, 3],
+        ["Он", 9.76, 9.954, 4],
+        ["пишет", 9.954, 10.347, 4],
+        ["код", 10.347, 10.547, 4],
+        ["и", 10.547, 10.733, 4],
+        ["получается", 10.733, 11.7, 4],
+        ["видео.", 11.7, 12.272, 4],
+        ["Субтитры,", 12.736, 13.399, 5],
+        ["зумы,", 13.399, 13.832, 5],
+        ["тайминги", 13.832, 14.495, 5],
+        ["кадр", 14.495, 14.726, 5],
+        ["в", 14.726, 14.935, 5],
+        ["кадр.", 14.935, 15.167, 5],
+        ["Не", 15.631, 15.828, 6],
+        ["понравилось", 15.828, 16.64, 6],
+        ["говорю", 16.756, 17.272, 6],
+        ["«быстрее».", 17.272, 17.794, 6],
+        ["Через", 18.05, 18.393, 7],
+        ["минуту", 18.393, 18.898, 7],
+        ["новый", 18.898, 19.241, 7],
+        ["рендер.", 19.241, 19.589, 7],
+        ["Никаких", 20.053, 20.617, 8],
+        ["таймлайнов", 20.617, 21.2, 8],
+        ["и", 21.2, 21.379, 8],
+        ["ключевых", 21.379, 21.95, 8],
+        ["кадров.", 21.95, 22.333, 8],
+        ["Напиши", 22.855, 23.547, 9],
+        ["«МОНТАЖ»", 23.547, 24.024, 9],
+        ["скину,", 24.024, 24.492, 9],
+        ["как", 24.492, 24.731, 9],
+        ["это", 24.731, 25.184, 9],
+        ["повторить.", 25.184, 25.899, 9],
+      ];
+      const SENT = [
+        [0.29, 2.199],
+        [2.431, 3.045],
+        [3.567, 7.201],
+        [7.665, 9.505],
+        [9.76, 12.272],
+        [12.736, 15.167],
+        [15.631, 17.794],
+        [18.05, 19.589],
+        [20.053, 22.333],
+        [22.855, 25.899],
+      ];
+      // guide loudness at 30 fps (0..1), drives the mouth rig
+      const ENV = [
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.04, 0.09, 0.15, 0.3, 0.56, 0.83, 0.86, 0.58, 0.43,
+        0.53, 0.77, 0.87, 0.72, 0.42, 0.32, 0.42, 0.41, 0.32, 0.23, 0.22, 0.27, 0.34, 0.35, 0.37,
+        0.43, 0.43, 0.34, 0.2, 0.13, 0.15, 0.21, 0.39, 0.62, 0.74, 0.69, 0.63, 0.69, 0.75, 0.74,
+        0.69, 0.58, 0.43, 0.32, 0.31, 0.29, 0.26, 0.23, 0.19, 0.15, 0.12, 0.1, 0.12, 0.12, 0.11,
+        0.12, 0.14, 0.12, 0.06, 0.02, 0.0, 0.0, 0.0, 0.0, 0.0, 0.03, 0.15, 0.43, 0.66, 0.65, 0.42,
+        0.17, 0.1, 0.17, 0.23, 0.25, 0.28, 0.34, 0.4, 0.4, 0.32, 0.21, 0.11, 0.05, 0.02, 0.01, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.05, 0.2, 0.43, 0.5, 0.3, 0.14,
+        0.08, 0.07, 0.08, 0.11, 0.2, 0.34, 0.53, 0.68, 0.71, 0.67, 0.6, 0.44, 0.27, 0.27, 0.3, 0.27,
+        0.25, 0.32, 0.38, 0.26, 0.18, 0.25, 0.43, 0.65, 0.76, 0.63, 0.41, 0.23, 0.12, 0.06, 0.07,
+        0.13, 0.26, 0.52, 0.81, 0.82, 0.55, 0.26, 0.17, 0.28, 0.36, 0.24, 0.15, 0.18, 0.22, 0.2,
+        0.13, 0.07, 0.02, 0.07, 0.25, 0.48, 0.57, 0.44, 0.21, 0.14, 0.18, 0.16, 0.11, 0.05, 0.06,
+        0.17, 0.37, 0.4, 0.28, 0.17, 0.1, 0.06, 0.03, 0.01, 0.0, 0.02, 0.09, 0.17, 0.19, 0.15, 0.1,
+        0.16, 0.42, 0.69, 0.73, 0.51, 0.24, 0.15, 0.24, 0.25, 0.17, 0.1, 0.05, 0.06, 0.12, 0.21,
+        0.29, 0.31, 0.29, 0.27, 0.23, 0.19, 0.13, 0.12, 0.14, 0.13, 0.1, 0.05, 0.02, 0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.01, 0.03, 0.09, 0.23, 0.5, 0.77, 0.72, 0.43, 0.19,
+        0.13, 0.21, 0.29, 0.38, 0.38, 0.31, 0.26, 0.25, 0.28, 0.29, 0.32, 0.3, 0.19, 0.16, 0.31,
+        0.61, 0.83, 0.7, 0.56, 0.7, 0.9, 0.92, 0.71, 0.44, 0.31, 0.34, 0.37, 0.32, 0.21, 0.15, 0.18,
+        0.2, 0.13, 0.14, 0.23, 0.27, 0.21, 0.13, 0.14, 0.18, 0.17, 0.2, 0.24, 0.24, 0.2, 0.13, 0.08,
+        0.04, 0.02, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.07, 0.26, 0.49, 0.62, 0.58, 0.4, 0.24, 0.14,
+        0.13, 0.23, 0.33, 0.37, 0.41, 0.53, 0.52, 0.41, 0.32, 0.23, 0.13, 0.06, 0.05, 0.03, 0.04,
+        0.12, 0.25, 0.39, 0.46, 0.43, 0.27, 0.12, 0.06, 0.03, 0.02, 0.01, 0.0, 0.06, 0.15, 0.15,
+        0.1, 0.08, 0.15, 0.25, 0.29, 0.34, 0.38, 0.34, 0.25, 0.23, 0.32, 0.37, 0.5, 0.75, 0.93,
+        0.95, 0.8, 0.52, 0.23, 0.16, 0.2, 0.23, 0.24, 0.23, 0.23, 0.25, 0.32, 0.28, 0.2, 0.17, 0.2,
+        0.25, 0.27, 0.26, 0.24, 0.19, 0.13, 0.07, 0.03, 0.01, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.01, 0.04, 0.09, 0.2, 0.33, 0.32, 0.19, 0.1, 0.1, 0.2, 0.32, 0.37, 0.23,
+        0.1, 0.15, 0.31, 0.48, 0.57, 0.6, 0.52, 0.37, 0.26, 0.24, 0.31, 0.46, 0.6, 0.62, 0.46, 0.35,
+        0.36, 0.41, 0.4, 0.28, 0.11, 0.03, 0.02, 0.16, 0.47, 0.74, 0.73, 0.44, 0.29, 0.31, 0.28,
+        0.21, 0.17, 0.19, 0.26, 0.29, 0.17, 0.07, 0.05, 0.17, 0.45, 0.75, 0.72, 0.48, 0.41, 0.34,
+        0.22, 0.1, 0.06, 0.04, 0.14, 0.39, 0.62, 0.67, 0.54, 0.34, 0.21, 0.22, 0.25, 0.21, 0.12,
+        0.05, 0.02, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.01, 0.04, 0.13, 0.26,
+        0.41, 0.47, 0.36, 0.2, 0.22, 0.45, 0.7, 0.67, 0.52, 0.64, 0.77, 0.87, 0.95, 0.98, 0.88,
+        0.64, 0.47, 0.45, 0.42, 0.35, 0.29, 0.29, 0.32, 0.3, 0.25, 0.22, 0.2, 0.16, 0.09, 0.05,
+        0.07, 0.18, 0.32, 0.44, 0.57, 0.72, 0.76, 0.62, 0.62, 0.55, 0.37, 0.21, 0.21, 0.35, 0.43,
+        0.31, 0.17, 0.09, 0.15, 0.29, 0.41, 0.41, 0.36, 0.31, 0.28, 0.26, 0.24, 0.22, 0.19, 0.17,
+        0.14, 0.09, 0.05, 0.01, 0.0, 0.0, 0.0, 0.0, 0.01, 0.09, 0.24, 0.42, 0.57, 0.69, 0.61, 0.45,
+        0.34, 0.28, 0.22, 0.18, 0.2, 0.3, 0.39, 0.4, 0.38, 0.4, 0.46, 0.47, 0.3, 0.15, 0.16, 0.28,
+        0.39, 0.4, 0.4, 0.58, 0.81, 0.9, 0.79, 0.58, 0.45, 0.54, 0.66, 0.59, 0.45, 0.4, 0.45, 0.5,
+        0.48, 0.39, 0.25, 0.19, 0.22, 0.25, 0.23, 0.15, 0.05, 0.01, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.01, 0.06, 0.19, 0.31, 0.32, 0.26, 0.24, 0.27, 0.26, 0.17, 0.13,
+        0.16, 0.23, 0.32, 0.34, 0.27, 0.15, 0.06, 0.13, 0.4, 0.68, 0.82, 0.72, 0.52, 0.45, 0.6,
+        0.81, 0.95, 0.95, 0.81, 0.58, 0.41, 0.44, 0.48, 0.37, 0.21, 0.13, 0.19, 0.24, 0.15, 0.07,
+        0.09, 0.2, 0.32, 0.33, 0.25, 0.29, 0.38, 0.44, 0.48, 0.53, 0.58, 0.58, 0.39, 0.19, 0.08,
+        0.04, 0.08, 0.21, 0.39, 0.48, 0.36, 0.19, 0.11, 0.12, 0.16, 0.2, 0.22, 0.15, 0.07, 0.03,
+        0.01, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.01, 0.04, 0.12, 0.2,
+        0.21, 0.13, 0.08, 0.11, 0.21, 0.32, 0.39, 0.36, 0.28, 0.27, 0.27, 0.23, 0.15, 0.08, 0.08,
+        0.21, 0.51, 0.79, 0.82, 0.66, 0.46, 0.37, 0.39, 0.33, 0.34, 0.41, 0.41, 0.32, 0.17, 0.08,
+        0.07, 0.23, 0.48, 0.67, 0.71, 0.62, 0.46, 0.32, 0.25, 0.2, 0.16, 0.17, 0.19, 0.18, 0.13,
+        0.06, 0.03, 0.05, 0.1, 0.16, 0.22, 0.25, 0.27, 0.33, 0.38, 0.34, 0.22, 0.14, 0.25, 0.53,
+        0.56, 0.36, 0.26, 0.38, 0.58, 0.59, 0.31, 0.18, 0.23, 0.22, 0.14, 0.09, 0.14, 0.22, 0.17,
+        0.08, 0.04, 0.03, 0.12, 0.32, 0.53, 0.52, 0.39, 0.29, 0.19, 0.12, 0.08, 0.06, 0.03, 0.01,
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+      ];
+      /* @generated:end */
+
+      // Key words shown as full-screen slams: [first word, last word, text, colour]
+      const SLAMS = [
+        [5, 5, "ВООБЩЕ", "or"],
+        [10, 11, "OPUS 5.5", "white"],
+        [13, 13, "HYPERFRAMES", "or"],
+        [24, 24, "ВИДЕО", "white"],
+        [28, 30, "КАДР В КАДР", "or"],
+        [34, 34, "«БЫСТРЕЕ»", "white"],
+        [45, 45, "«МОНТАЖ»", "or"],
+      ];
+      const inSlam = new Map();
+      SLAMS.forEach((s, si) => {
+        for (let i = s[0]; i <= s[1]; i++) inSlam.set(i, si);
+      });
+      const SPEECH_END = WORDS[WORDS.length - 1][2];
+
+      function mulberry32(a) {
+        return function () {
+          a |= 0;
+          a = (a + 0x6d2b79f5) | 0;
+          let t = Math.imul(a ^ (a >>> 15), 1 | a);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+      const rnd = mulberry32(1878);
+      const fit = window.__hyperframes && window.__hyperframes.fitTextFontSize;
+
+      // ── Avatar: lip-sync from the timing guide's envelope, blinks, idle life ──
+      SENT.forEach(([s, e]) => {
+        tl.to("#mouth", { opacity: 1, duration: 0.06, ease: "none" }, Math.max(0, s - 0.06));
+        tl.to("#mouth", { opacity: 0, duration: 0.08, ease: "none" }, e + 0.02);
+      });
+      ENV.forEach((v, i) => {
+        tl.set(
+          "#mouth-open",
+          { scaleY: Math.min(1, 0.12 + v * 0.95), svgOrigin: "889 548" },
+          i / FPS,
+        );
+        tl.set("#av-bob", { y: -v * 8 }, i / FPS);
+      });
+      const LIDS = [
+        ["#lid-l", "800 352"],
+        ["#lid-r", "972 352"],
+      ];
+      LIDS.forEach(([id, o]) => tl.set(id, { scaleY: 0, svgOrigin: o }, 0));
+      for (let t = 1.3; t < DURATION - 0.5; t += 2.3 + rnd() * 1.9) {
+        LIDS.forEach(([id, o]) => {
+          tl.to(id, { scaleY: 1, svgOrigin: o, duration: 0.07, ease: "power2.in" }, t);
+          tl.to(id, { scaleY: 0, svgOrigin: o, duration: 0.1, ease: "power2.out" }, t + 0.09);
+        });
+      }
+      tl.fromTo(
+        "#av-sway",
+        { rotation: -1 },
+        { rotation: 1, duration: 2.2, ease: "sine.inOut", yoyo: true, repeat: 13 },
+        0,
+      );
+      tl.fromTo(
+        "#av-breathe",
+        { scale: 1 },
+        { scale: 1.012, duration: 1.8, ease: "sine.inOut", yoyo: true, repeat: 16 },
+        0,
+      );
+      tl.fromTo(
+        "#glow",
+        { scale: 0.95, opacity: 0.8 },
+        { scale: 1.05, opacity: 1, duration: 2.6, ease: "sine.inOut", yoyo: true, repeat: 11 },
+        0,
+      );
+
+      // ── Camera: a new framing on every sentence (jump-cut rhythm) + slow push inside each shot ──
+      // Shared layers get many tweens: give them an explicit base state at t=0 and
+      // never let a later fromTo render early (immediateRender: false).
+      tl.set("#cam", { filter: "blur(0px)" }, 0);
+      tl.set("#push", { scale: 1 }, 0);
+      tl.set("#shake", { x: 0, y: 0, rotation: 0 }, 0);
+      tl.set("#flash", { opacity: 0 }, 0);
+      tl.set("#glow-hit", { opacity: 0, scale: 1 }, 0);
+      const FRAMING = [
+        [1.18, 0, 0],
+        [1.0, 0, 0],
+        [1.08, 34, 10],
+        [1.26, -22, 0],
+        [1.0, 0, 0],
+        [1.12, 40, 0],
+        [1.28, 0, -10],
+        [1.06, -32, 0],
+        [1.0, 0, 0],
+        [1.22, 0, 0],
+      ];
+      const shotStart = SENT.map(([s], i) => (i === 0 ? 0 : s - 0.12));
+      shotStart.push(DURATION);
+      FRAMING.forEach(([sc, x, y], i) => {
+        const t = shotStart[i];
+        const len = shotStart[i + 1] - t;
+        tl.set("#cam", { scale: sc, x: x, y: y }, t);
+        tl.fromTo(
+          "#push",
+          { scale: 1 },
+          { scale: 1.045, duration: len, ease: "none", immediateRender: false },
+          t,
+        );
+        if (i > 0) {
+          tl.fromTo(
+            "#cam",
+            { filter: "blur(9px)" },
+            { filter: "blur(0px)", duration: 0.18, ease: "power2.out", immediateRender: false },
+            t,
+          );
+        }
+      });
+      // Opening: crash-zoom in from black
+      tl.fromTo(
+        "#shake",
+        { scale: 1.35, opacity: 0 },
+        { scale: 1, opacity: 1, duration: 0.45, ease: "expo.out" },
+        0,
+      );
+
+      // ── Phrase captions: ≤3 words, break on punctuation, sentence, or a slam ──
+      const groups = [];
+      let cur = [];
+      WORDS.forEach((w, i) => {
+        if (inSlam.has(i)) {
+          if (cur.length) groups.push(cur);
+          cur = [];
+          return;
+        }
+        cur.push(i);
+        const next = WORDS[i + 1];
+        const brk =
+          /[.,:!?»]$/.test(w[0]) ||
+          !next ||
+          next[3] !== w[3] ||
+          inSlam.has(i + 1) ||
+          cur.length >= 3;
+        if (brk) {
+          groups.push(cur);
+          cur = [];
+        }
+      });
+      const capRoot = document.getElementById("captions");
+      const ENTER = [
+        [{ y: 60, opacity: 0 }, "back.out(2)"],
+        [{ scale: 0.6, opacity: 0 }, "back.out(2.6)"],
+        [{ rotation: -6, y: 30, opacity: 0 }, "expo.out"],
+      ];
+      groups.forEach((g, gi) => {
+        const el = document.createElement("div");
+        el.className = "cg";
+        el.id = "cg-" + gi;
+        const line = document.createElement("div");
+        line.className = "cg-line";
+        el.appendChild(line);
+        g.forEach((wi, k) => {
+          const word = document.createElement("span");
+          word.className = "cw";
+          word.id = "cw-" + wi;
+          const bg = document.createElement("span");
+          bg.className = "cw-bg";
+          bg.id = "cwb-" + wi;
+          const t = document.createElement("span");
+          t.className = "cw-t";
+          t.textContent = WORDS[wi][0].replace(/[.,:]$/, "");
+          word.appendChild(bg);
+          word.appendChild(t);
+          if (k > 0) line.appendChild(document.createTextNode(" "));
+          line.appendChild(word);
+        });
+        if (fit) {
+          const r = fit(line.textContent.toUpperCase(), {
+            fontFamily: "Oswald",
+            fontWeight: 700,
+            maxWidth: 860,
+            baseFontSize: 104,
+            minFontSize: 64,
+          });
+          line.style.fontSize = r.fontSize + "px";
+        }
+        capRoot.appendChild(el);
+
+        const start = Math.max(0.3, WORDS[g[0]][1] - 0.05);
+        const nextIdx = g[g.length - 1] + 1;
+        const nextStart = nextIdx < WORDS.length ? WORDS[nextIdx][1] - 0.05 : DURATION;
+        const stop = Math.min(nextStart, WORDS[g[g.length - 1]][2] + 0.3);
+        const [from, ease] = ENTER[gi % ENTER.length];
+        tl.set("#" + el.id, { visibility: "visible" }, start);
+        tl.fromTo(
+          "#" + el.id,
+          from,
+          { y: 0, scale: 1, rotation: 0, opacity: 1, duration: 0.22, ease },
+          start,
+        );
+        g.forEach((wi) => {
+          const [, s, e] = WORDS[wi];
+          tl.to("#cwb-" + wi, { scaleX: 1, opacity: 1, duration: 0.12, ease: "power2.out" }, s);
+          tl.fromTo(
+            "#cw-" + wi,
+            { scale: 1 },
+            { scale: 1.08, duration: 0.1, ease: "back.out(3)", yoyo: true, repeat: 1 },
+            s,
+          );
+          tl.to(
+            "#cwb-" + wi,
+            { opacity: 0, scaleX: 1.04, duration: 0.1, ease: "power2.in" },
+            Math.max(s + 0.12, e),
+          );
+        });
+        tl.to("#" + el.id, { opacity: 0, y: -20, duration: 0.1, ease: "power2.in" }, stop - 0.1);
+        tl.set("#" + el.id, { opacity: 0, visibility: "hidden" }, stop);
+      });
+
+      // ── Slams: full-screen key word, alternating entrance, camera hit ──
+      const slamRoot = document.getElementById("slams");
+      const SLAM_IN = [
+        [{ y: -260, opacity: 0 }, "back.out(1.7)"],
+        [{ x: -700, opacity: 0, skewX: 18 }, "expo.out"],
+        [{ x: 700, opacity: 0, skewX: -18 }, "expo.out"],
+        [{ scale: 0.3, opacity: 0 }, "back.out(2.2)"],
+      ];
+      function slamHit(t, big) {
+        const k = big ? 1 : 0.6;
+        const sx = (rnd() - 0.5) * 36 * k;
+        const sy = (rnd() - 0.5) * 26 * k;
+        tl.fromTo(
+          "#shake",
+          { x: sx, y: sy, rotation: (rnd() - 0.5) * 2 * k },
+          {
+            x: 0,
+            y: 0,
+            rotation: 0,
+            duration: 0.32,
+            ease: "elastic.out(1, 0.4)",
+            immediateRender: false,
+          },
+          t,
+        );
+        tl.fromTo(
+          "#flash",
+          { opacity: 0.9 * k },
+          { opacity: 0, duration: 0.35, ease: "power2.out", immediateRender: false },
+          t,
+        );
+        tl.fromTo(
+          "#glow-hit",
+          { opacity: 1, scale: 0.8 },
+          { opacity: 0, scale: 1.25, duration: 0.6, ease: "power3.out", immediateRender: false },
+          t,
+        );
+      }
+      function addSlam(id, text, colour, start, stop, mode, drift = true) {
+        const el = document.createElement("div");
+        el.className = "slam" + (colour === "white" ? " white" : "");
+        el.id = id;
+        el.textContent = text;
+        let size = 250;
+        if (fit)
+          size = Math.min(
+            250,
+            fit(text, {
+              fontFamily: "Oswald",
+              fontWeight: 700,
+              maxWidth: 1000,
+              baseFontSize: 250,
+              minFontSize: 120,
+            }).fontSize,
+          );
+        el.style.fontSize = size + "px";
+        slamRoot.appendChild(el);
+        gsap.set(el, { yPercent: -50 });
+        const [from, ease] = SLAM_IN[mode % SLAM_IN.length];
+        tl.set("#" + id, { visibility: "visible" }, start);
+        tl.fromTo(
+          "#" + id,
+          from,
+          { x: 0, y: 0, scale: 1, skewX: 0, opacity: 1, duration: 0.24, ease },
+          start,
+        );
+        if (drift)
+          tl.to(
+            "#" + id,
+            { scale: 1.06, duration: Math.max(0.1, stop - start - 0.36), ease: "none" },
+            start + 0.24,
+          );
+        tl.to(
+          "#" + id,
+          { opacity: 0, scale: 1.25, filter: "blur(8px)", duration: 0.12, ease: "power2.in" },
+          stop - 0.12,
+        );
+        tl.set("#" + id, { opacity: 0, visibility: "hidden" }, stop);
+        slamHit(start, true);
+      }
+      SLAMS.forEach(([a, b, text, colour], si) => {
+        const start = WORDS[a][1] - 0.04;
+        const next = b + 1 < WORDS.length ? WORDS[b + 1][1] - 0.05 : DURATION;
+        const stop = Math.min(next, WORDS[b][2] + 0.45);
+        addSlam("slam-" + si, text, colour, start, stop, si);
+      });
+
+      // ── Outro: the CTA word returns and holds until the fade ──
+      addSlam("slam-cta", "«МОНТАЖ»", "or", SPEECH_END + 0.35, DURATION - 0.3, 3, false);
+      tl.to(
+        "#slam-cta",
+        { scale: 1.12, duration: 0.55, ease: "sine.inOut", yoyo: true, repeat: 4 },
+        SPEECH_END + 0.8,
+      );
+      tl.set("#cam", { scale: 1.12, x: 0, y: 0 }, SPEECH_END + 0.35);
+      tl.to("#blackout", { opacity: 1, duration: 0.35, ease: "power2.in" }, DURATION - 0.38);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
