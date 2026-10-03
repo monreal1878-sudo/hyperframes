@@ -2,7 +2,7 @@
 import { parseSavedSource } from "./authoredSource";
 
 type TweenLike = {
-  targets?: () => Element[];
+  targets?: () => unknown[];
   vars?: Record<string, unknown>;
   getChildren?: (deep: boolean) => TweenLike[];
 };
@@ -34,9 +34,15 @@ export function authoringFile(el: Element): string | null {
   );
 }
 
+// A tween may target a plain object (the runtime's duration filler, an authored `tl.to({}, ...)`):
+// it has no style to reset, and gsap.set's clearProps throws on it.
+function elementTargets(tween: TweenLike): Element[] {
+  return (tween.targets?.() ?? []).filter((t): t is Element => (t as Node | null)?.nodeType === 1);
+}
+
 function addTweenTargets(tween: TweenLike, targets: Map<Element, Set<string>>): void {
   const props = tweenedProps(tween.vars);
-  for (const el of tween.targets?.() ?? []) {
+  for (const el of elementTargets(tween)) {
     const seen = targets.get(el) ?? new Set<string>();
     for (const prop of props) seen.add(prop);
     targets.set(el, seen);
@@ -68,7 +74,7 @@ function tweenTargetsIn(timelines: Set<unknown>): Set<Element> {
   for (const tl of timelines) {
     try {
       for (const tween of (tl as TweenLike | undefined)?.getChildren?.(true) ?? []) {
-        for (const el of tween.targets?.() ?? []) els.add(el);
+        for (const el of elementTargets(tween)) els.add(el);
       }
     } catch {}
   }
