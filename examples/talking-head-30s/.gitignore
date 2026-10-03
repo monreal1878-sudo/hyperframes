@@ -1,0 +1,6 @@
+# Source A-roll (37 MB) — fetch with `npm run fetch:media`
+aroll.mp4
+aroll.src.mp4
+renders/
+snapshots/
+.hyperframes/

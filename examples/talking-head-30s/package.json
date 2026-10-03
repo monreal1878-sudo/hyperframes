@@ -1,0 +1,12 @@
+{
+  "name": "talking-head-30s",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "fetch:media": "curl -fL -o aroll.src.mp4 https://gen-os-static.s3.us-east-2.amazonaws.com/astral_assets/uploaded_assets/cd544f35_70b817304d84455490962587aa52c167.mp4 && ffmpeg -y -i aroll.src.mp4 -c:v libx264 -crf 18 -r 30 -g 30 -keyint_min 30 -movflags +faststart -c:a copy aroll.mp4 && rm aroll.src.mp4",
+    "dev": "npx --yes hyperframes@0.6.82 preview",
+    "check": "npx --yes hyperframes@0.6.82 lint && npx --yes hyperframes@0.6.82 validate && npx --yes hyperframes@0.6.82 inspect",
+    "render": "npx --yes hyperframes@0.6.82 render",
+    "publish": "npx --yes hyperframes@0.6.82 publish"
+  }
+}

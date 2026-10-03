@@ -1,0 +1,1214 @@
+<!doctype html>
+<html lang="en" data-resolution="portrait">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      /*
+       * Talking head · 30s · 1080x1920
+       * Palette (one accent hue, neutrals tinted warm toward it):
+       *   ink    #140C06   cream  #FFF1E2   accent #FF7A1A   muted #E9D2BC
+       * Type registers:
+       *   Instrument Serif  — statements (step titles, recap)
+       *   Bricolage Grotesque 800 — speech (captions)
+       *   JetBrains Mono    — metadata (labels, counters)
+       */
+      @font-face {
+        font-family: "Bricolage Grotesque";
+        font-weight: 800;
+        font-style: normal;
+        src: url("fonts/BricolageGrotesque-ExtraBold.woff2") format("woff2");
+      }
+      @font-face {
+        font-family: "Instrument Serif";
+        font-weight: 400;
+        font-style: normal;
+        src: url("fonts/InstrumentSerif-Regular.woff2") format("woff2");
+      }
+      @font-face {
+        font-family: "Instrument Serif";
+        font-weight: 400;
+        font-style: italic;
+        src: url("fonts/InstrumentSerif-Italic.woff2") format("woff2");
+      }
+      :root {
+        --ink: #140c06;
+        --cream: #fff1e2;
+        --accent: #ff7a1a;
+        --muted: #e9d2bc;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: var(--ink);
+      }
+      body {
+        font-family: "Bricolage Grotesque", sans-serif;
+        color: var(--cream);
+      }
+      #root {
+        position: relative;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: var(--ink);
+      }
+
+      /* ── A-roll: one non-timed wrapper owns the punch-in scale ── */
+      #cam {
+        position: absolute;
+        inset: 0;
+        transform-origin: 560px 470px;
+        z-index: 1;
+      }
+      #cam video {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      /* ── Readability scrims (localized, not full-frame) ── */
+      #scrim-top {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 320px;
+        z-index: 2;
+        background: linear-gradient(rgba(20, 12, 6, 0.72), rgba(20, 12, 6, 0));
+      }
+      #scrim-bottom {
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        height: 1080px;
+        z-index: 2;
+        background: linear-gradient(
+          rgba(20, 12, 6, 0),
+          rgba(20, 12, 6, 0.55) 45%,
+          rgba(20, 12, 6, 0.85)
+        );
+      }
+
+      /* ── Top bar: metadata + step tracker + progress ── */
+      #topbar {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 220px;
+        padding: 72px 64px 0;
+        z-index: 10;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 24px;
+        letter-spacing: 0.08em;
+      }
+      #progress-track {
+        position: absolute;
+        left: 64px;
+        right: 64px;
+        top: 40px;
+        height: 6px;
+        border-radius: 3px;
+        background: rgba(255, 241, 226, 0.22);
+      }
+      #progress-fill {
+        position: absolute;
+        inset: 0;
+        border-radius: 3px;
+        background: var(--accent);
+        transform-origin: left center;
+        box-shadow: 0 0 18px rgba(255, 122, 26, 0.7);
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        color: var(--cream);
+      }
+      .brand-dot {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 0 20px rgba(255, 122, 26, 0.9);
+      }
+      .steps {
+        display: flex;
+        gap: 22px;
+      }
+      .step-dot {
+        position: relative;
+        color: rgba(255, 241, 226, 0.6);
+        padding-bottom: 10px;
+      }
+      .step-dot .bar {
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        height: 4px;
+        background: var(--accent);
+        transform: scaleX(0);
+        transform-origin: left center;
+      }
+
+      /* ── Step panel: persistent glass box, cards swap inside ── */
+      #panel {
+        position: absolute;
+        left: 56px;
+        top: 950px;
+        width: 968px;
+        height: 420px;
+        z-index: 10;
+        border-radius: 32px;
+        overflow: hidden;
+        background: rgba(20, 12, 6, 0.78);
+        border: 2px solid rgba(255, 241, 226, 0.16);
+      }
+      #panel-glow {
+        position: absolute;
+        left: -160px;
+        top: -200px;
+        width: 620px;
+        height: 620px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(255, 122, 26, 0.42), rgba(255, 122, 26, 0) 65%);
+      }
+      #panel-rule {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 4px;
+        background: var(--accent);
+        transform-origin: left center;
+      }
+      #wipe {
+        position: absolute;
+        inset: 0;
+        z-index: 5;
+        background: var(--accent);
+        transform: scaleX(0);
+        transform-origin: left center;
+      }
+      .card {
+        position: absolute;
+        inset: 0;
+        padding: 52px 56px;
+        display: flex;
+        gap: 40px;
+      }
+      .numeral {
+        font-family: "Instrument Serif", serif;
+        font-size: 220px;
+        line-height: 0.82;
+        margin-top: 14px;
+        letter-spacing: -0.04em;
+        color: var(--accent);
+        text-shadow: 0 0 60px rgba(255, 122, 26, 0.45);
+        flex: 0 0 auto;
+      }
+      .card-body {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        min-width: 0;
+        flex: 1 1 auto;
+      }
+      .label {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 22px;
+        letter-spacing: 0.12em;
+        color: var(--muted);
+      }
+      .title {
+        font-family: "Instrument Serif", serif;
+        font-size: 80px;
+        line-height: 0.98;
+        letter-spacing: -0.02em;
+        color: var(--cream);
+        max-width: 600px;
+      }
+      .title em {
+        font-style: italic;
+        color: var(--accent);
+      }
+      .chips {
+        display: flex;
+        gap: 14px;
+        margin-top: 8px;
+      }
+      .chip {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        height: 60px;
+        padding: 0 20px;
+        border-radius: 30px;
+        border: 2px solid rgba(255, 241, 226, 0.35);
+        font-family: "JetBrains Mono", monospace;
+        font-size: 22px;
+        letter-spacing: 0.04em;
+        color: var(--cream);
+        white-space: nowrap;
+      }
+      .tick {
+        position: relative;
+        width: 26px;
+        height: 26px;
+        border-radius: 7px;
+        border: 2px solid var(--accent);
+        flex: 0 0 auto;
+      }
+      .tick-fill {
+        position: absolute;
+        inset: 3px;
+        border-radius: 3px;
+        background: var(--accent);
+        transform: scale(0);
+      }
+      .days {
+        display: flex;
+        gap: 12px;
+        margin-top: 8px;
+      }
+      .day {
+        position: relative;
+        width: 104px;
+        height: 64px;
+        border-radius: 14px;
+        border: 2px solid rgba(255, 241, 226, 0.35);
+        overflow: hidden;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 20px;
+        letter-spacing: 0.08em;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .day-fill {
+        position: absolute;
+        inset: 0;
+        background: var(--accent);
+        transform: scaleY(0);
+        transform-origin: bottom center;
+      }
+      .day span {
+        position: relative;
+      }
+
+      /* Hook + closing cards use a stacked layout without a numeral */
+      .card.stack {
+        flex-direction: column;
+        justify-content: center;
+        gap: 20px;
+      }
+      .hook-title {
+        font-family: "Instrument Serif", serif;
+        font-size: 128px;
+        line-height: 0.92;
+        letter-spacing: -0.03em;
+      }
+      .hook-title em {
+        font-style: italic;
+        color: var(--accent);
+      }
+      .close-line {
+        font-family: "Instrument Serif", serif;
+        font-size: 132px;
+        line-height: 0.95;
+        letter-spacing: -0.03em;
+      }
+      .close-line.accent {
+        font-style: italic;
+        color: var(--accent);
+        text-shadow: 0 0 50px rgba(255, 122, 26, 0.45);
+      }
+
+      /* ── Captions ── */
+      #captions {
+        position: absolute;
+        left: 0;
+        top: 1430px;
+        width: 100%;
+        height: 200px;
+        z-index: 20;
+        overflow: visible;
+      }
+      .cg {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 70px;
+        text-align: center;
+        font-weight: 800;
+        font-size: 72px;
+        line-height: 1.05;
+        letter-spacing: -0.02em;
+        opacity: 0;
+        visibility: hidden;
+        text-shadow: 0 4px 24px rgba(20, 12, 6, 0.75);
+      }
+      .cg-line {
+        max-width: 100%;
+      }
+      .cw {
+        display: inline-block;
+        color: var(--cream);
+      }
+
+      /* ── End card ── */
+      #endcard {
+        position: absolute;
+        inset: 0;
+        z-index: 60;
+        background: var(--ink);
+        opacity: 0;
+        padding: 0 96px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 34px;
+      }
+      #end-glow {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 1400px;
+        height: 1400px;
+        margin: -700px 0 0 -700px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(255, 122, 26, 0.34), rgba(255, 122, 26, 0) 60%);
+      }
+      .end-label {
+        position: relative;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 26px;
+        letter-spacing: 0.14em;
+        color: var(--muted);
+      }
+      .recap {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 28px;
+        font-family: "Instrument Serif", serif;
+        font-size: 84px;
+        line-height: 1;
+        letter-spacing: -0.02em;
+      }
+      .recap .tick {
+        width: 52px;
+        height: 52px;
+        border-width: 4px;
+        border-radius: 12px;
+      }
+      .recap .tick-fill {
+        inset: 7px;
+        transform: scale(1);
+      }
+      .end-sign {
+        position: relative;
+        margin-top: 30px;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 24px;
+        letter-spacing: 0.14em;
+        color: var(--accent);
+      }
+      #blackout {
+        position: absolute;
+        inset: 0;
+        z-index: 200;
+        background: #000;
+        opacity: 0;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="30"
+      data-width="1080"
+      data-height="1920"
+    >
+      <!-- A-roll: 5 jump-cut segments of one take, cut on silences -->
+      <div id="cam">
+        <video
+          id="v0"
+          class="clip"
+          src="aroll.mp4"
+          data-start="0"
+          data-duration="3.8"
+          data-media-start="0.15"
+          data-track-index="0"
+          muted
+          playsinline
+        ></video>
+        <video
+          id="v1"
+          class="clip"
+          src="aroll.mp4"
+          data-start="3.8"
+          data-duration="10.35"
+          data-media-start="4.5"
+          data-track-index="0"
+          muted
+          playsinline
+        ></video>
+        <video
+          id="v2"
+          class="clip"
+          src="aroll.mp4"
+          data-start="14.15"
+          data-duration="8.22"
+          data-media-start="15.3"
+          data-track-index="0"
+          muted
+          playsinline
+        ></video>
+        <video
+          id="v3"
+          class="clip"
+          src="aroll.mp4"
+          data-start="22.38"
+          data-duration="3.08"
+          data-media-start="23.97"
+          data-track-index="0"
+          muted
+          playsinline
+        ></video>
+        <video
+          id="v4"
+          class="clip"
+          src="aroll.mp4"
+          data-start="25.46"
+          data-duration="3.54"
+          data-media-start="38.82"
+          data-track-index="0"
+          muted
+          playsinline
+        ></video>
+      </div>
+
+      <!-- Matching audio segments (video is always muted; audio is its own element) -->
+      <audio
+        id="a0"
+        class="clip"
+        src="aroll.mp4"
+        data-start="0"
+        data-duration="3.8"
+        data-media-start="0.15"
+        data-track-index="1"
+        data-volume="1"
+      ></audio>
+      <audio
+        id="a1"
+        class="clip"
+        src="aroll.mp4"
+        data-start="3.8"
+        data-duration="10.35"
+        data-media-start="4.5"
+        data-track-index="1"
+        data-volume="1"
+      ></audio>
+      <audio
+        id="a2"
+        class="clip"
+        src="aroll.mp4"
+        data-start="14.15"
+        data-duration="8.22"
+        data-media-start="15.3"
+        data-track-index="1"
+        data-volume="1"
+      ></audio>
+      <audio
+        id="a3"
+        class="clip"
+        src="aroll.mp4"
+        data-start="22.38"
+        data-duration="3.08"
+        data-media-start="23.97"
+        data-track-index="1"
+        data-volume="1"
+      ></audio>
+      <audio
+        id="a4"
+        class="clip"
+        src="aroll.mp4"
+        data-start="25.46"
+        data-duration="3.54"
+        data-media-start="38.82"
+        data-track-index="1"
+        data-volume="1"
+      ></audio>
+
+      <div id="scrim-top"></div>
+      <div id="scrim-bottom"></div>
+
+      <!-- Top bar -->
+      <div id="topbar">
+        <div id="progress-track"><div id="progress-fill"></div></div>
+        <div class="brand">
+          <div class="brand-dot"></div>
+          <span id="brand-text">ONBOARDING · WEEK 01</span>
+        </div>
+        <div class="steps">
+          <div class="step-dot" id="sd1">
+            01
+            <div class="bar"></div>
+          </div>
+          <div class="step-dot" id="sd2">
+            02
+            <div class="bar"></div>
+          </div>
+          <div class="step-dot" id="sd3">
+            03
+            <div class="bar"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step panel -->
+      <div id="panel">
+        <div id="panel-glow" data-layout-ignore></div>
+        <div id="panel-rule"></div>
+
+        <div
+          id="card-hook"
+          class="card stack clip"
+          data-start="0"
+          data-duration="3.84"
+          data-track-index="2"
+        >
+          <div class="label" id="hook-label">3 STEPS · GET SET UP</div>
+          <div class="hook-title" id="hook-title">Your <em>first</em> week</div>
+        </div>
+
+        <div
+          id="card-1"
+          class="card clip"
+          data-start="3.85"
+          data-duration="10.34"
+          data-track-index="2"
+        >
+          <div class="numeral" id="n1">01</div>
+          <div class="card-body">
+            <div class="label" id="l1">STEP 01 / 03 · ACCOUNTS</div>
+            <div class="title" id="t1">Activate your <em>accounts</em></div>
+            <div class="chips">
+              <div class="chip" id="c1a">
+                <div class="tick"><div class="tick-fill"></div></div>
+                Slack
+              </div>
+              <div class="chip" id="c1b">
+                <div class="tick"><div class="tick-fill"></div></div>
+                Email
+              </div>
+              <div class="chip" id="c1c">
+                <div class="tick"><div class="tick-fill"></div></div>
+                PM tool
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div
+          id="card-2"
+          class="card clip"
+          data-start="14.2"
+          data-duration="8.19"
+          data-track-index="2"
+        >
+          <div class="numeral" id="n2">02</div>
+          <div class="card-body">
+            <div class="label" id="l2">STEP 02 / 03 · COMPLIANCE</div>
+            <div class="title" id="t2">Finish your <em>training</em></div>
+            <div class="days" id="days">
+              <div class="day">
+                <div class="day-fill"></div>
+                <span>MON</span>
+              </div>
+              <div class="day">
+                <div class="day-fill"></div>
+                <span>TUE</span>
+              </div>
+              <div class="day">
+                <div class="day-fill"></div>
+                <span>WED</span>
+              </div>
+              <div class="day">
+                <div class="day-fill"></div>
+                <span>THU</span>
+              </div>
+              <div class="day">
+                <div class="day-fill"></div>
+                <span>FRI</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div
+          id="card-3"
+          class="card clip"
+          data-start="22.4"
+          data-duration="2.99"
+          data-track-index="2"
+        >
+          <div class="numeral" id="n3">03</div>
+          <div class="card-body">
+            <div class="label" id="l3">STEP 03 / 03 · MANAGER</div>
+            <div class="title" id="t3">Book a <em>one-on-one</em></div>
+            <div class="chips">
+              <div class="chip" id="c3a">
+                <div class="brand-dot"></div>
+                THIS WEEK · 30 MIN
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div
+          id="card-end"
+          class="card stack clip"
+          data-start="25.4"
+          data-duration="4.6"
+          data-track-index="2"
+        >
+          <div class="label" id="lc">DON'T SIT ON QUESTIONS</div>
+          <div class="close-line accent" id="cl1">Ask early.</div>
+          <div class="close-line" id="cl2">Ask often.</div>
+        </div>
+
+        <div id="wipe"></div>
+      </div>
+
+      <!-- Captions (groups built synchronously from WORDS below) -->
+      <div id="captions"></div>
+
+      <!-- End card -->
+      <div id="endcard">
+        <div id="end-glow" data-layout-ignore></div>
+        <div class="end-label" id="end-label">WEEK 01 · CHECKLIST</div>
+        <div class="recap" id="r1">
+          <div class="tick"><div class="tick-fill"></div></div>
+          Activate accounts
+        </div>
+        <div class="recap" id="r2">
+          <div class="tick"><div class="tick-fill"></div></div>
+          Compliance training
+        </div>
+        <div class="recap" id="r3">
+          <div class="tick"><div class="tick-fill"></div></div>
+          One-on-one with manager
+        </div>
+        <div class="end-sign" id="end-sign">MADE WITH HYPERFRAMES · HTML → VIDEO</div>
+      </div>
+
+      <!-- Film texture from the registry (hyperframes add grain-overlay / vignette) -->
+      <div
+        id="hf-vignette"
+        style="position: absolute; inset: 0; pointer-events: none; z-index: 90"
+      ></div>
+      <div
+        id="grain-overlay"
+        style="position: absolute; inset: 0; pointer-events: none; z-index: 100; overflow: hidden"
+      >
+        <div class="grain-texture"></div>
+      </div>
+      <div id="blackout"></div>
+    </div>
+
+    <style>
+      #hf-vignette {
+        background: radial-gradient(ellipse at center, transparent 55%, rgba(20, 12, 6, 0.55) 100%);
+      }
+      @keyframes hf-grain-noise {
+        0%,
+        100% {
+          transform: translate(0, 0);
+        }
+        10% {
+          transform: translate(-5%, -5%);
+        }
+        20% {
+          transform: translate(-10%, 5%);
+        }
+        30% {
+          transform: translate(5%, -10%);
+        }
+        40% {
+          transform: translate(-5%, 15%);
+        }
+        50% {
+          transform: translate(-10%, 5%);
+        }
+        60% {
+          transform: translate(15%, 0);
+        }
+        70% {
+          transform: translate(0, 10%);
+        }
+        80% {
+          transform: translate(-15%, 0);
+        }
+        90% {
+          transform: translate(10%, 5%);
+        }
+      }
+      #grain-overlay .grain-texture {
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+        opacity: 0.07;
+        animation: hf-grain-noise 0.5s steps(1) 60;
+      }
+    </style>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      const DURATION = 30;
+
+      // Word timings in OUTPUT time: [text, start, end]. Source: the whisper transcript
+      // shipped with the overlay-montage-prod fixture (transcript.json), remapped through
+      // the jump cuts. Every cue below is anchored to a word index, not a hand-typed second.
+      const WORDS = [
+        ["Welcome", 0.19, 0.509],
+        ["to", 0.59, 0.629],
+        ["your", 0.669, 0.769],
+        ["first", 0.809, 1.049],
+        ["week.", 1.109, 1.389],
+        ["There", 1.909, 2.03],
+        ["are", 2.07, 2.149],
+        ["a", 2.189, 2.269],
+        ["few", 2.31, 2.409],
+        ["things", 2.469, 2.669],
+        ["you", 2.709, 2.769],
+        ["need", 2.789, 2.889],
+        ["to", 2.929, 2.989],
+        ["know", 3.049, 3.129],
+        ["to", 3.189, 3.229],
+        ["get", 3.289, 3.409],
+        ["set", 3.489, 3.629],
+        ["up.", 3.709, 3.8],
+        ["Step", 3.919, 4.159],
+        ["one:", 4.26, 4.479],
+        ["activate", 4.72, 5.099],
+        ["your", 5.159, 5.22],
+        ["accounts.", 5.26, 5.78],
+        ["You", 6.3, 6.379],
+        ["should", 6.419, 6.539],
+        ["have", 6.579, 6.659],
+        ["received", 6.699, 7.039],
+        ["an", 7.079, 7.159],
+        ["email", 7.24, 7.52],
+        ["with", 7.579, 7.72],
+        ["links", 7.8, 7.999],
+        ["to", 8.06, 8.119],
+        ["Slack,", 8.22, 8.619],
+        ["your", 8.939, 9.039],
+        ["email,", 9.14, 9.519],
+        ["and", 9.819, 9.979],
+        ["our", 10.159, 10.26],
+        ["project", 10.379, 10.8],
+        ["management", 10.859, 11.199],
+        ["tool.", 11.3, 11.559],
+        ["Get", 12.099, 12.18],
+        ["those", 12.26, 12.48],
+        ["set", 12.539, 12.68],
+        ["up", 12.739, 12.839],
+        ["before", 12.899, 13.18],
+        ["anything", 13.339, 13.68],
+        ["else.", 13.76, 14.099],
+        ["Step", 14.289, 14.489],
+        ["two:", 14.609, 14.929],
+        ["complete", 15.229, 15.61],
+        ["your", 15.649, 15.729],
+        ["compliance", 15.79, 16.209],
+        ["training.", 16.29, 16.69],
+        ["It's", 17.169, 17.31],
+        ["in", 17.329, 17.39],
+        ["the", 17.429, 17.47],
+        ["learning", 17.53, 17.809],
+        ["portal", 17.889, 18.149],
+        ["under", 18.27, 18.429],
+        ["required", 18.489, 18.929],
+        ["courses,", 19.009, 19.429],
+        ["and", 19.85, 19.95],
+        ["it", 19.989, 20.069],
+        ["needs", 20.149, 20.37],
+        ["to", 20.37, 20.45],
+        ["be", 20.489, 20.629],
+        ["done", 20.69, 20.889],
+        ["within", 20.95, 21.21],
+        ["your", 21.249, 21.389],
+        ["first", 21.409, 21.629],
+        ["five", 21.709, 21.889],
+        ["days.", 21.95, 22.329],
+        ["Step", 22.489, 22.709],
+        ["three:", 22.83, 23.469],
+        ["schedule", 23.569, 23.91],
+        ["a", 23.969, 24.009],
+        ["one-on-one", 24.09, 24.629],
+        ["with", 24.67, 24.789],
+        ["your", 24.809, 24.909],
+        ["manager.", 24.949, 25.369],
+        ["Don't", 25.519, 25.7],
+        ["sit", 25.739, 25.84],
+        ["on", 25.899, 26.019],
+        ["questions.", 26.099, 26.859],
+        ["Ask", 26.959, 27.18],
+        ["early", 27.239, 27.639],
+        ["and", 27.699, 27.84],
+        ["ask", 27.919, 28.119],
+        ["often.", 28.219, 28.619],
+      ];
+      const at = (i) => WORDS[i][1];
+      const end = (i) => WORDS[i][2];
+
+      // Card boundaries (must match the card clips' data-start in the HTML).
+      const T1 = 3.85; // "Step one"
+      const T2 = 14.2; // "Step two"
+      const T3 = 22.4; // "Step three"
+      const T4 = 25.4; // "Don't sit on questions"
+      const TE = end(88) + 0.06; // end card after "often."
+
+      // Words that stay in the accent color after they are spoken.
+      const KEY = new Set([
+        "accounts.",
+        "Slack,",
+        "email,",
+        "project",
+        "management",
+        "tool.",
+        "compliance",
+        "training.",
+        "five",
+        "days.",
+        "one-on-one",
+        "manager.",
+        "questions.",
+        "early",
+        "often.",
+      ]);
+
+      // ── Caption groups: break on punctuation, pauses > 0.25s, or 4 words ──
+      const groups = [];
+      let cur = [];
+      WORDS.forEach((w, i) => {
+        cur.push(w);
+        const next = WORDS[i + 1];
+        const punct = /[.,:!?]$/.test(w[0]);
+        const pause = next ? next[1] - w[2] > 0.25 : true;
+        if (punct || pause || cur.length >= 4 || !next) {
+          groups.push(cur);
+          cur = [];
+        }
+      });
+
+      const capRoot = document.getElementById("captions");
+      const fit = window.__hyperframes && window.__hyperframes.fitTextFontSize;
+      groups.forEach((g, gi) => {
+        const el = document.createElement("div");
+        el.className = "cg";
+        el.id = "cg-" + gi;
+        // Inline line box inside the flex group so the word spaces survive
+        const line = document.createElement("div");
+        line.className = "cg-line";
+        el.appendChild(line);
+        g.forEach((w, wi) => {
+          const span = document.createElement("span");
+          span.className = "cw";
+          span.id = "cg-" + gi + "-" + wi;
+          span.textContent = w[0];
+          if (wi > 0) line.appendChild(document.createTextNode(" "));
+          line.appendChild(span);
+        });
+        if (fit) {
+          const r = fit(g.map((w) => w[0]).join(" "), {
+            fontFamily: "Bricolage Grotesque",
+            fontWeight: 800,
+            maxWidth: 900 / 1.04,
+            baseFontSize: 72,
+            minFontSize: 48,
+          });
+          el.style.fontSize = r.fontSize + "px";
+        }
+        capRoot.appendChild(el);
+      });
+
+      // ── Caption timeline: one group visible at a time, hard kill at group end ──
+      groups.forEach((g, gi) => {
+        const el = "#cg-" + gi;
+        const start = Math.max(0, g[0][1] - 0.06);
+        const nextStart = groups[gi + 1] ? groups[gi + 1][0][1] - 0.06 : DURATION;
+        const stop = Math.min(nextStart, g[g.length - 1][2] + 0.4, TE);
+        tl.set(el, { visibility: "visible" }, start);
+        tl.fromTo(
+          el,
+          { opacity: 0, y: 22 },
+          { opacity: 1, y: 0, duration: 0.16, ease: "power3.out" },
+          start,
+        );
+        g.forEach((w, wi) => {
+          const span = "#cg-" + gi + "-" + wi;
+          tl.to(span, { color: "#FF7A1A", scale: 1.04, duration: 0.08, ease: "power2.out" }, w[1]);
+          tl.to(
+            span,
+            {
+              color: KEY.has(w[0]) ? "#FF7A1A" : "#FFF1E2",
+              scale: 1,
+              duration: 0.14,
+              ease: "sine.out",
+            },
+            Math.max(w[1] + 0.09, w[2]),
+          );
+        });
+        tl.to(el, { opacity: 0, duration: 0.1, ease: "power2.in" }, stop - 0.1);
+        tl.set(el, { opacity: 0, visibility: "hidden" }, stop);
+      });
+
+      // ── A-roll framing: alternate on every jump cut, plus two digital punch-ins
+      //    inside continuous segments (on "There are..." and "You should...") ──
+      const FRAMING = [
+        [0, 1.0, 0],
+        [at(5) - 0.08, 1.12, -10],
+        [3.8, 1.0, 0],
+        [at(23) - 0.08, 1.1, 14],
+        [14.15, 1.0, 0],
+        [22.38, 1.15, -12],
+        [25.46, 1.05, 0],
+      ];
+      FRAMING.forEach(([t, s, x]) => tl.set("#cam", { scale: s, x: x }, t));
+
+      // ── Top bar ──
+      tl.fromTo(
+        "#progress-fill",
+        { scaleX: 0 },
+        { scaleX: 1, duration: DURATION, ease: "none" },
+        0,
+      );
+      tl.fromTo(
+        ".brand",
+        { x: -40, opacity: 0 },
+        { x: 0, opacity: 1, duration: 0.5, ease: "expo.out" },
+        0.15,
+      );
+      tl.fromTo(
+        ".steps",
+        { y: -20, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.45, ease: "back.out(1.6)" },
+        0.3,
+      );
+      tl.to(
+        ".brand-dot",
+        { scale: 1.35, duration: 0.9, ease: "sine.inOut", yoyo: true, repeat: 15 },
+        0.6,
+      );
+      [
+        ["#sd1", T1],
+        ["#sd2", T2],
+        ["#sd3", T3],
+      ].forEach(([sel, t]) => {
+        tl.to(sel, { color: "#FF7A1A", duration: 0.2, ease: "power1.out" }, t);
+        tl.fromTo(sel + " .bar", { scaleX: 0 }, { scaleX: 1, duration: 0.35, ease: "expo.out" }, t);
+      });
+
+      // ── Panel entrance + ambient glow ──
+      tl.fromTo(
+        "#panel",
+        { y: 80, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.7, ease: "expo.out" },
+        0.12,
+      );
+      tl.fromTo(
+        "#panel-rule",
+        { scaleX: 0 },
+        { scaleX: 1, duration: 0.9, ease: "power4.inOut" },
+        0.3,
+      );
+      tl.fromTo(
+        "#panel-glow",
+        { scale: 0.9, x: 0 },
+        { scale: 1.12, x: 30, duration: 2.4, ease: "sine.inOut", yoyo: true, repeat: 11 },
+        0,
+      );
+
+      // ── Card transitions: accent wipe covers the panel, card swaps underneath ──
+      [T1, T2, T3, T4].forEach((t) => {
+        tl.set("#wipe", { transformOrigin: "left center" }, t - 0.22);
+        tl.fromTo(
+          "#wipe",
+          { scaleX: 0 },
+          { scaleX: 1, duration: 0.22, ease: "power3.in" },
+          t - 0.22,
+        );
+        tl.set("#wipe", { transformOrigin: "right center" }, t);
+        tl.to("#wipe", { scaleX: 0, duration: 0.3, ease: "expo.out" }, t);
+      });
+
+      // Hook
+      tl.fromTo(
+        "#hook-label",
+        { x: -30, opacity: 0 },
+        { x: 0, opacity: 1, duration: 0.4, ease: "power2.out" },
+        0.45,
+      );
+      tl.fromTo(
+        "#hook-title",
+        { y: 50, opacity: 0, filter: "blur(10px)" },
+        { y: 0, opacity: 1, filter: "blur(0px)", duration: 0.7, ease: "power4.out" },
+        0.3,
+      );
+
+      // Step entrances (numeral slams, label slides, title rises)
+      function stepIn(n, t) {
+        tl.fromTo(
+          "#n" + n,
+          { scale: 1.6, opacity: 0 },
+          { scale: 1, opacity: 1, duration: 0.45, ease: "back.out(1.4)" },
+          t + 0.08,
+        );
+        tl.fromTo(
+          "#l" + n,
+          { x: 40, opacity: 0 },
+          { x: 0, opacity: 1, duration: 0.3, ease: "power2.out" },
+          t + 0.14,
+        );
+        tl.fromTo(
+          "#t" + n,
+          { y: 36, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.6, ease: "expo.out" },
+          t + 0.2,
+        );
+      }
+      stepIn(1, T1);
+      stepIn(2, T2);
+      stepIn(3, T3);
+
+      // Step 1: chips land on "Slack", "email", "project"; tick off on "Get those set up"
+      [
+        ["#c1a", at(32)],
+        ["#c1b", at(34)],
+        ["#c1c", at(37)],
+      ].forEach(([sel, t], i) => {
+        tl.fromTo(
+          sel,
+          { y: 30, opacity: 0, scale: 0.9 },
+          { y: 0, opacity: 1, scale: 1, duration: 0.35, ease: "back.out(2)" },
+          t - 0.05,
+        );
+        tl.to(
+          sel + " .tick-fill",
+          { scale: 1, duration: 0.22, ease: "back.out(3)" },
+          at(40) + i * 0.16,
+        );
+        tl.to(
+          sel,
+          { borderColor: "#FF7A1A", duration: 0.2, ease: "power1.out" },
+          at(40) + i * 0.16,
+        );
+      });
+
+      // Step 2: five-day tracker appears on "and it needs...", fills on "first five days"
+      tl.fromTo(
+        ".day",
+        { y: 24, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.3, ease: "power3.out", stagger: 0.06 },
+        at(61),
+      );
+      tl.to(".day-fill", { scaleY: 1, duration: 0.18, ease: "power2.out", stagger: 0.15 }, at(69));
+      tl.to(".day span", { color: "#140C06", duration: 0.1, stagger: 0.15 }, at(69) + 0.04);
+
+      // Step 3: calendar chip on "one-on-one"
+      tl.fromTo(
+        "#c3a",
+        { x: -40, opacity: 0 },
+        { x: 0, opacity: 1, duration: 0.4, ease: "expo.out" },
+        at(76) - 0.04,
+      );
+
+      // Closing card: ghosted lines wait, then light up on "Ask early" / "ask often"
+      tl.fromTo(
+        "#lc",
+        { opacity: 0, letterSpacing: "0.4em" },
+        { opacity: 1, letterSpacing: "0.12em", duration: 0.6, ease: "power2.out" },
+        T4 + 0.1,
+      );
+      tl.fromTo(
+        ".close-line",
+        { y: 40, opacity: 0 },
+        { y: 0, opacity: 0.16, duration: 0.6, ease: "power3.out", stagger: 0.1 },
+        T4 + 0.18,
+      );
+      tl.fromTo(
+        "#cl1",
+        { opacity: 0.16, x: 0 },
+        { opacity: 1, x: 12, duration: 0.35, ease: "expo.out" },
+        at(84) - 0.04,
+      );
+      tl.fromTo(
+        "#cl2",
+        { opacity: 0.16, x: 0 },
+        { opacity: 1, x: 12, duration: 0.35, ease: "back.out(2)" },
+        at(87) - 0.04,
+      );
+
+      // ── End card (final scene: fades allowed) ──
+      tl.fromTo("#endcard", { opacity: 0 }, { opacity: 1, duration: 0.3, ease: "power2.out" }, TE);
+      tl.fromTo("#end-glow", { scale: 0.7 }, { scale: 1.05, duration: 1.5, ease: "sine.out" }, TE);
+      tl.fromTo(
+        "#end-label",
+        { opacity: 0, y: -20 },
+        { opacity: 1, y: 0, duration: 0.3, ease: "power2.out" },
+        TE + 0.1,
+      );
+      tl.fromTo(
+        ".recap",
+        { x: -50, opacity: 0 },
+        { x: 0, opacity: 1, duration: 0.35, ease: "expo.out", stagger: 0.12 },
+        TE + 0.15,
+      );
+      tl.fromTo(
+        ".recap .tick-fill",
+        { scale: 0 },
+        { scale: 1, duration: 0.2, ease: "back.out(3)", stagger: 0.12 },
+        TE + 0.35,
+      );
+      tl.fromTo(
+        "#end-sign",
+        { opacity: 0 },
+        { opacity: 1, duration: 0.3, ease: "sine.out" },
+        TE + 0.55,
+      );
+      tl.to("#blackout", { opacity: 1, duration: 0.35, ease: "power2.in" }, 29.65);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
