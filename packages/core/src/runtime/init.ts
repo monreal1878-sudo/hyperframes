@@ -3005,6 +3005,7 @@ export function initSandboxRuntimeModular(): void {
   };
   const releasePausedMedia = (el: HTMLMediaElement): void => {
     pausedMediaLeases.delete(el);
+    wakeTransport();
   };
   window.__hf.leasePausedMedia = leasePausedMedia;
   window.__hf.releasePausedMedia = releasePausedMedia;
@@ -4434,8 +4435,8 @@ export function initSandboxRuntimeModular(): void {
     // running transport. This stays as the explicit statement of the
     // invariant, one boolean, for the day that guard is added there.
     manualEditGestureWatch.observing &&
-    // A drop/cancel owes one reconciling seek that has not happened yet.
-    !pausedSeekDeferredByManualGesture &&
+    // A drop/cancel owes one reconciling seek; the gesture watch wakes the loop when it clears.
+    (!pausedSeekDeferredByManualGesture || hasActiveStudioManualEditGesture()) &&
     // A composition change is owed a manifest post that the rate limit has
     // deferred. Parking here would strand it until the next unrelated change,
     // so the loop stays awake — for at most one cadence interval — until the
